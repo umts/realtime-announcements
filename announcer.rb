@@ -62,7 +62,8 @@ def departures_crossed_interval(new_departures, old_departures)
         route_dir_departures = stop_departures[[route_name, headsign]] if stop_departures
         new_interval = new_departures[stop_name][[route_name, headsign]][trip_id] if route_dir_departures
         if new_interval && old_interval > @interval && new_interval <= @interval
-          departures << [stop_name, route_name, headsign, new_interval]
+          departures << { route_name: route_name, headsign: headsign,
+                          stop_name: stop_name, interval: interval }
         end
       end
     end
@@ -99,12 +100,12 @@ def get_stops_cache
 end
 
 def make_announcements(departures)
-  departures.each do |(stop_name, route_name, headsign, interval)|
+  departures.each do |departure|
     system 'say', <<~MESSAGE
-      Route #{route_name}
-      departing for #{headsign}
-      will be leaving from #{stop_name}
-      in #{interval} minutes.
+      Route #{departure.fetch :route_name}
+      departing for #{departure.fetch :headsign}
+      will be leaving from #{departure.fetch :stop_name}
+      in #{departure.fetch :interval} minutes.
     MESSAGE
   end
 end
@@ -149,7 +150,10 @@ OptionParser.new do |opts|
 end.parse!
 
 if options[:test]
-  make_announcements([['Fine Arts Center', '30', 'Old Belchertown Road', '5']])
+  make_announcements([
+    { route_name: '30', headsign: 'Old Belchertown Road', stop_name: 'Fine Arts Center', interval: '5' },
+    { route_name: 'B43', headsign: 'Northampton Center', stop_name: 'Haigis Mall', interval: '4' }
+  ])
 else
   get_routes_cache unless File.file? ROUTES_CACHE_FILE
   get_stops_cache unless File.file? STOPS_CACHE_FILE
