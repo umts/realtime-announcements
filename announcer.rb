@@ -1,5 +1,6 @@
 require 'json'
 require 'net/http'
+require 'optparse'
 require 'pry-byebug' # TODO: remove
 
 PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
@@ -89,7 +90,7 @@ def get_stops_cache
   stop_data = JSON.parse(Net::HTTP.get(stops_uri))
   stop_data.each do |stop|
     id = stop.fetch('StopId')
-    name = stop.fetch('Name')
+    name = stop.fetch('Description')
     stops[id] = name
   end
   File.open STOPS_CACHE_FILE, 'w' do |file|
@@ -100,7 +101,10 @@ end
 def make_announcements(departures)
   departures.each do |(stop_name, route_name, headsign, interval)|
     system 'say', <<~MESSAGE
-      Route #{route_name} departing for #{headsign} will be leaving from #{stop_name} in #{interval} minutes.
+      Route #{route_name}
+      departing for #{headsign}
+      will be leaving from #{stop_name}
+      in #{interval} minutes.
     MESSAGE
   end
 end
@@ -135,13 +139,26 @@ def new_departures
   departures
 end
 
-get_routes_cache unless File.file? ROUTES_CACHE_FILE
-get_stops_cache unless File.file? STOPS_CACHE_FILE
-define_route_names
-define_stop_names
-define_query_stops
-define_interval
-departures = new_departures
-announcements = departures_crossed_interval(departures, cached_departures)
-make_announcements(announcements) if announcements.length > 0
-cache_departures(departures)
+options = {}
+
+OptionParser.new do |opts|
+  opts.banner = 'Usage: ruby announcer.rb [options]'
+  opts.on '-t', '--test', 'Test the announcement functionality without querying the API' do
+    options[:test] = true
+  end
+end.parse!
+
+if options[:test]
+  make_announcements([['Fine Arts Center', '30', 'Old Belchertown Road', '5']])
+else
+  get_routes_cache unless File.file? ROUTES_CACHE_FILE
+  get_stops_cache unless File.file? STOPS_CACHE_FILE
+  define_route_names
+  define_stop_names
+  define_query_stops
+  define_interval
+  departures = new_departures
+  announcements = departures_crossed_interval(departures, cached_departures)
+  make_announcements(announcements) if announcements.length > 0
+  cache_departures(departures)
+end
