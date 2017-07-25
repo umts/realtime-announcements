@@ -94,7 +94,7 @@ def make_announcement(route_id:, headsign:, stop_id:, interval:)
   play headsign: headsign, route_id: route_id
   play fragment: 'will be leaving'
   play stop:     stop_id
-  play number:   "in #{interval} minutes"
+  play fragment: "in #{interval} minutes"
   sleep 0.5
 end
 
