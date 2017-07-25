@@ -91,7 +91,7 @@ def make_announcement(route_id:, headsign:, stop_id:, interval:)
   play fragment: 'route'
   play route:    route_id
   play fragment: 'towards'
-  play headsign: "#{route_id}/#{headsign}"
+  play headsign: headsign, route_id: route_id
   play fragment: 'leaving'
   play stop:     stop_id
   play number:   interval
@@ -126,11 +126,19 @@ def new_departures
   departures
 end
 
-def play(file_data)
-  file_data.each_pair do |dir, name|
-    file_path = "voice/#{dir.to_s}s/#{name}.wav"
-    if File.file? file_path
-      AudioPlayback.play(file_path).block
+def play(file_data, specifiers = {})
+  dir, name = file_data.to_a.first
+  file_path = "voice/#{dir}s/#{name}.wav"
+  if File.file? file_path
+    AudioPlayback.play(file_path).block
+  else
+    if file_data.to_a[1]
+      _, route_id = file_data.to_a[1]
+      file_path = "voice/#{dir}s/#{route_id}/#{name}.wav"
+      if File.file? file_path
+        AudioPlayback.play(file_path).block
+      else system 'say', name
+      end
     else system 'say', name
     end
   end
@@ -150,6 +158,8 @@ if options[:test]
                     stop_id: '72', interval: '5'
   make_announcement route_id: '20035', headsign: 'Orchard Hill via Butterfield',
                     stop_id: '71', interval: '4'
+  make_announcement route_id: '20031', headsign: 'Bus Garage via Mass Ave',
+                    stop_id: '71', interval: '5'
 else
   define_query_stops
   define_interval
