@@ -7,12 +7,8 @@ PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 CONFIG_FILE = 'config.json'
 QUERY_STOPS_FILE = 'stops.txt'
 
-ROUTES_CACHE_FILE = 'cached_routes.json'
-STOPS_CACHE_FILE = 'cached_stops.json'
 DEPARTURES_CACHE_FILE = 'cached_departures.json'
 
-@route_names = {}
-@stop_names = {}
 @interval = 5
 @query_stops = %w[71 72 73]
 
@@ -44,26 +40,18 @@ def define_query_stops
   end
 end
 
-def define_route_names
-  @route_names = JSON.parse File.read(ROUTES_CACHE_FILE)
-end
-
-def define_stop_names
-  @stop_names = JSON.parse File.read(STOPS_CACHE_FILE)
-end
-
 def departures_crossed_interval(new_departures, old_departures)
   departures = []
-  old_departures.each_pair do |stop_name, route_directions|
+  old_departures.each_pair do |stop_id, route_directions|
     route_directions.each_pair do |route_dir_data, trips|
-      route_name, headsign = route_dir_data.match(/\A\["(.*)", "(.*)"\]\z/).captures
+      route_id, direction = route_dir_data.match(/\A\["(.*)", "(.*)"\]\z/).captures
       trips.each_pair do |trip_id, old_interval|
-        stop_departures = new_departures[stop_name]
-        route_dir_departures = stop_departures[[route_name, headsign]] if stop_departures
-        new_interval = new_departures[stop_name][[route_name, headsign]][trip_id] if route_dir_departures
+        stop_departures = new_departures[stop_id]
+        route_dir_departures = stop_departures[[route_id, direction]] if stop_departures
+        new_interval = new_departures[stop_id][[route_id, direction]][trip_id] if route_dir_departures
         if new_interval && old_interval > @interval && new_interval <= @interval
-          departures << { route_name: route_name, headsign: headsign,
-                          stop_name: stop_name, interval: interval }
+          departures << { route_id: route_id, direction: direction,
+                          stop_id: stop_id, interval: interval }
         end
       end
     end
@@ -99,41 +87,32 @@ def get_stops_cache
   end
 end
 
-def make_announcements(departures)
-  departures.each do |departure|
-    system 'say', <<~MESSAGE
-      Route #{departure.fetch :route_name}
-      departing for #{departure.fetch :headsign}
-      will be leaving from #{departure.fetch :stop_name}
-      in #{departure.fetch :interval} minutes.
-    MESSAGE
-  end
+def make_announcement(route_id:, direction:, stop_id:, interval:)
+  # TODO
 end
 
 def new_departures
   departures = {}
   @query_stops.each do |stop_id|
-    stop_name = @stop_names[stop_id]
-    departures[stop_name] = {}
+    departures[stop_id] = {}
     departure_uri = URI("#{PVTA_API_URL}/stopdepartures/get/#{stop_id}")
     departure_data = JSON.parse Net::HTTP.get(departure_uri)
     route_directions = departure_data.first.fetch 'RouteDirections'
     route_directions.each do |route_dir|
       route_id = route_dir.fetch('RouteId').to_s
-      route_name = @route_names[route_id]
+      direction = route_dir.fetch('Direction')
       route_dir_data = route_dir.fetch 'Departures'
       route_dir_data.each do |departure|
         trip = departure.fetch 'Trip'
         trip_id = trip.fetch('TripId').to_s
-        headsign = trip.fetch 'InternetServiceDesc'
         timestamp = departure.fetch 'EDT'
         match_data = timestamp.match %r{/Date\((\d+)000-0[45]00\)/}
         timestamp = match_data.captures.first.to_i
         edt = Time.at(timestamp)
         interval_seconds = edt - Time.now
         interval = interval_seconds.floor / 60
-        departures[stop_name][[route_name, headsign]] ||= {}
-        departures[stop_name][[route_name, headsign]][trip_id] = interval
+        departures[stop_id][[route_id, direction]] ||= {}
+        departures[stop_id][[route_id, direction]][trip_id] = interval
       end
     end
   end
@@ -150,19 +129,13 @@ OptionParser.new do |opts|
 end.parse!
 
 if options[:test]
-  make_announcements([
-    { route_name: '30', headsign: 'Old Belchertown Road', stop_name: 'Fine Arts Center', interval: '5' },
-    { route_name: 'B43', headsign: 'Northampton Center', stop_name: 'Haigis Mall', interval: '4' }
-  ])
+  make_announcement route_id: '20030', direction: 'Southbound',
+                    stop_id: '71', interval: '4'
 else
-  get_routes_cache unless File.file? ROUTES_CACHE_FILE
-  get_stops_cache unless File.file? STOPS_CACHE_FILE
-  define_route_names
-  define_stop_names
   define_query_stops
   define_interval
   departures = new_departures
   announcements = departures_crossed_interval(departures, cached_departures)
-  make_announcements(announcements) if announcements.length > 0
+  announcements.each(&method(:make_announcement)) if announcements.length > 0
   cache_departures(departures)
 end
