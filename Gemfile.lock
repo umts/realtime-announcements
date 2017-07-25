@@ -5,18 +5,22 @@ GEM
       ffi-libc (~> 0.1, >= 0.1.0)
       ffi-portaudio (~> 0.1, >= 0.1.2)
       ruby-audio (~> 1.6, >= 1.6.1)
+    chronic (0.10.2)
     ffi (1.9.18)
     ffi-libc (0.1.0)
       ffi (~> 1.0)
     ffi-portaudio (0.1.2)
       ffi
     ruby-audio (1.6.1)
+    whenever (0.9.7)
+      chronic (>= 0.6.3)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   audio-playback
+  whenever
 
 BUNDLED WITH
    1.15.1
