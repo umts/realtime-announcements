@@ -148,7 +148,7 @@ def say(text)
   system 'say', text
   if File.file? MISSING_TEXT_FILE
     missing_messages = File.read(MISSING_TEXT_FILE).lines.map(&:strip)
-    new_message = !missing_messages.include?(message)
+    new_message = !missing_messages.include?(text)
   else new_message = true
   end
   if new_message
