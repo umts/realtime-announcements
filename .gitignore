@@ -1,3 +1,4 @@
-config.json
-stop_ids.txt
 cached_departures.json
+config.json
+missing_messages.log
+stop_ids.txt
