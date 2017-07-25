@@ -151,7 +151,7 @@ def say(text)
   else []
   end
   missing_messages << text unless missing_messages.include?(text)
-  File.open MISSING_TEXT_FILE, 'a' do |file|
+  File.open MISSING_TEXT_FILE, 'w' do |file|
     file.puts missing_messages.sort
   end
 end
