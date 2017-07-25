@@ -44,13 +44,13 @@ def departures_crossed_interval(new_departures, old_departures)
   departures = []
   old_departures.each_pair do |stop_id, route_directions|
     route_directions.each_pair do |route_dir_data, trips|
-      route_id, direction = route_dir_data.match(/\A\["(.*)", "(.*)"\]\z/).captures
+      route_id, headsign = route_dir_data.match(/\A\["(.*)", "(.*)"\]\z/).captures
       trips.each_pair do |trip_id, old_interval|
         stop_departures = new_departures[stop_id]
-        route_dir_departures = stop_departures[[route_id, direction]] if stop_departures
-        new_interval = new_departures[stop_id][[route_id, direction]][trip_id] if route_dir_departures
+        route_dir_departures = stop_departures[[route_id, headsign]] if stop_departures
+        new_interval = new_departures[stop_id][[route_id, headsign]][trip_id] if route_dir_departures
         if new_interval && old_interval > @interval && new_interval <= @interval
-          departures << { route_id: route_id, direction: direction,
+          departures << { route_id: route_id, headsign: headsign,
                           stop_id: stop_id, interval: new_interval }
         end
       end
@@ -87,11 +87,11 @@ def get_stops_cache
   end
 end
 
-def make_announcement(route_id:, direction:, stop_id:, interval:)
+def make_announcement(route_id:, headsign:, stop_id:, interval:)
   play fragment: 'route'
   play route:    route_id
   play fragment: 'towards'
-  play headsign: "#{route_id}/#{direction}"
+  play headsign: "#{route_id}/#{headsign}"
   play fragment: 'leaving'
   play stop:     stop_id
   play number:   interval
@@ -107,10 +107,10 @@ def new_departures
     route_directions = departure_data.first.fetch 'RouteDirections'
     route_directions.each do |route_dir|
       route_id = route_dir.fetch('RouteId').to_s
-      direction = route_dir.fetch('Direction')
       route_dir_data = route_dir.fetch 'Departures'
       route_dir_data.each do |departure|
         trip = departure.fetch 'Trip'
+        headsign = trip.fetch 'InternetServiceDesc'
         trip_id = trip.fetch('TripId').to_s
         timestamp = departure.fetch 'EDT'
         match_data = timestamp.match %r{/Date\((\d+)000-0[45]00\)/}
@@ -118,8 +118,8 @@ def new_departures
         edt = Time.at(timestamp)
         interval_seconds = edt - Time.now
         interval = interval_seconds.floor / 60
-        departures[stop_id][[route_id, direction]] ||= {}
-        departures[stop_id][[route_id, direction]][trip_id] = interval
+        departures[stop_id][[route_id, headsign]] ||= {}
+        departures[stop_id][[route_id, headsign]][trip_id] = interval
       end
     end
   end
@@ -146,9 +146,9 @@ OptionParser.new do |opts|
 end.parse!
 
 if options[:test]
-  make_announcement route_id: '20030', direction: 'Northbound',
+  make_announcement route_id: '20030', headsign: 'North Amherst',
                     stop_id: '72', interval: '5'
-  make_announcement route_id: '20035', direction: 'Upward',
+  make_announcement route_id: '20035', headsign: 'Orchard Hill via Butterfield',
                     stop_id: '71', interval: '4'
 else
   define_query_stops
