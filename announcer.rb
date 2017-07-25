@@ -128,14 +128,13 @@ end
 
 def play(file_data, specifiers = {})
   dir, name = file_data.to_a.first
-  name.tr! '/', '-'
   file_path = "voice/#{dir}s/#{name}.wav"
   if File.file? file_path
     AudioPlayback.play(file_path).block
   else
     if file_data.to_a[1]
       _, route_id = file_data.to_a[1]
-      file_path = "voice/#{dir}s/#{route_id}/#{name}.wav"
+      file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
       if File.file? file_path
         AudioPlayback.play(file_path).block
       else system 'say', name
