@@ -2,7 +2,6 @@ require 'audio-playback'
 require 'json'
 require 'net/http'
 require 'optparse'
-require 'pry-byebug' # TODO: remove
 
 PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 CONFIG_FILE = 'config.json'
