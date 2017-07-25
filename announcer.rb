@@ -51,7 +51,7 @@ def departures_crossed_interval(new_departures, old_departures)
         new_interval = new_departures[stop_id][[route_id, direction]][trip_id] if route_dir_departures
         if new_interval && old_interval > @interval && new_interval <= @interval
           departures << { route_id: route_id, direction: direction,
-                          stop_id: stop_id, interval: interval }
+                          stop_id: stop_id, interval: new_interval }
         end
       end
     end
