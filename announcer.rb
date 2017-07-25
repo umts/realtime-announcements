@@ -90,9 +90,9 @@ end
 
 def make_announcement(route_id:, headsign:, stop_id:, interval:)
   play route:    route_id
-  play fragment: 'towards'
+  play fragment: 'toward'
   play headsign: headsign, route_id: route_id
-  play fragment: 'leaving'
+  play fragment: 'will be leaving'
   play stop:     stop_id
   play number:   interval
   sleep 0.5
@@ -146,8 +146,11 @@ end
 
 def say(text)
   system 'say', text
-  File.open MISSING_TEXT_FILE, 'a' do |file|
-    file.puts text
+  missing_messages = File.read(MISSING_TEXT_FILE).lines.map(&:strip)
+  unless missing_messages.include? text
+    File.open MISSING_TEXT_FILE, 'a' do |file|
+      file.puts text
+    end
   end
 end
 
