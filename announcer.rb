@@ -146,15 +146,13 @@ end
 
 def say(text)
   system 'say', text
-  if File.file? MISSING_TEXT_FILE
-    missing_messages = File.read(MISSING_TEXT_FILE).lines.map(&:strip)
-    new_message = !missing_messages.include?(text)
-  else new_message = true
+  missing_messages = if File.file? MISSING_TEXT_FILE
+    File.read(MISSING_TEXT_FILE).lines.map(&:strip)
+  else []
   end
-  if new_message
-    File.open MISSING_TEXT_FILE, 'a' do |file|
-      file.puts text
-    end
+  missing_messages << text unless missing_messages.include?(text)
+  File.open MISSING_TEXT_FILE, 'a' do |file|
+    file.puts missing_messages
   end
 end
 
