@@ -96,6 +96,7 @@ def make_announcement(route_id:, direction:, stop_id:, interval:)
   play fragment: 'leaving'
   play stop:     stop_id
   play number:   interval
+  sleep 0.5
 end
 
 def new_departures
@@ -146,7 +147,9 @@ OptionParser.new do |opts|
 end.parse!
 
 if options[:test]
-  make_announcement route_id: '20030', direction: 'Southbound',
+  make_announcement route_id: '20030', direction: 'Northbound',
+                    stop_id: '72', interval: '5'
+  make_announcement route_id: '20035', direction: 'Upward',
                     stop_id: '71', interval: '4'
 else
   define_query_stops
