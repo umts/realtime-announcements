@@ -89,7 +89,6 @@ def get_stops_cache
 end
 
 def make_announcement(route_id:, headsign:, stop_id:, interval:)
-  play fragment: 'route'
   play route:    route_id
   play fragment: 'towards'
   play headsign: headsign, route_id: route_id
