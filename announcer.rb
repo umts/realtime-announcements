@@ -5,6 +5,7 @@ require 'optparse'
 
 PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 CONFIG_FILE = 'config.json'
+MISSING_TEXT_FILE = 'missing_text.log'
 QUERY_STOPS_FILE = 'stops.txt'
 
 DEPARTURES_CACHE_FILE = 'cached_departures.json'
@@ -137,10 +138,17 @@ def play(file_data, specifiers = {})
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
       if File.file? file_path
         AudioPlayback.play(file_path).block
-      else system 'say', name
+      else say(name)
       end
-    else system 'say', name
+    else say(name)
     end
+  end
+end
+
+def say(text)
+  system 'say', text
+  File.open MISSING_TEXT_FILE, 'a' do |file|
+    file.puts text
   end
 end
 
