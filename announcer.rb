@@ -1,3 +1,4 @@
+require 'audio-playback'
 require 'json'
 require 'net/http'
 require 'optparse'
@@ -88,7 +89,13 @@ def get_stops_cache
 end
 
 def make_announcement(route_id:, direction:, stop_id:, interval:)
-  # TODO
+  play fragment: 'route'
+  play route:    route_id
+  play fragment: 'towards'
+  play headsign: "#{route_id}/#{direction}"
+  play fragment: 'leaving'
+  play stop:     stop_id
+  play number:   interval
 end
 
 def new_departures
@@ -117,6 +124,16 @@ def new_departures
     end
   end
   departures
+end
+
+def play(file_data)
+  file_data.each_pair do |dir, name|
+    file_path = "voice/#{dir.to_s}s/#{name}.wav"
+    if File.file? file_path
+      AudioPlayback.play(file_path).block
+    else system 'say', name
+    end
+  end
 end
 
 options = {}
