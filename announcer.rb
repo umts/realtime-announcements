@@ -128,6 +128,7 @@ end
 
 def play(file_data, specifiers = {})
   dir, name = file_data.to_a.first
+  name.tr! '/', '-'
   file_path = "voice/#{dir}s/#{name}.wav"
   if File.file? file_path
     AudioPlayback.play(file_path).block
@@ -154,11 +155,7 @@ OptionParser.new do |opts|
 end.parse!
 
 if options[:test]
-  make_announcement route_id: '20030', headsign: 'North Amherst',
-                    stop_id: '72', interval: '5'
-  make_announcement route_id: '20035', headsign: 'Orchard Hill via Butterfield',
-                    stop_id: '71', interval: '4'
-  make_announcement route_id: '20031', headsign: 'Bus Garage via Mass Ave',
+  make_announcement route_id: '20033', headsign: 'Big Y / Stop and Shop',
                     stop_id: '71', interval: '5'
 else
   define_query_stops
