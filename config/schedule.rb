@@ -1,4 +1,6 @@
-job_type :ruby, "cd :path && bundle exec ruby :task.rb"
+# frozen_string_literal: true
+
+job_type :ruby, 'cd :path && bundle exec ruby :task.rb'
 
 every '* 0-2,5-23 * * *' do
   ruby 'announcer'

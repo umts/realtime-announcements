@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'audio-playback'
 require 'json'
 require 'net/http'
@@ -27,31 +29,31 @@ def cached_departures
 end
 
 def define_interval
-  if File.file? CONFIG_FILE
-    config = JSON.parse File.read(CONFIG_FILE)
-    if config.key? 'interval'
-      @interval = config.fetch('interval')
-    end
-  end
+  return unless File.file? CONFIG_FILE
+  config = JSON.parse File.read(CONFIG_FILE)
+  @interval = config.fetch('interval') if config.key? 'interval'
 end
 
 def define_query_stops
-  if File.file? QUERY_STOPS_FILE
-    @query_stops = File.read(QUERY_STOPS_FILE).lines.map(&:strip)
-  end
+  return unless File.file? QUERY_STOPS_FILE
+  @query_stops = File.read(QUERY_STOPS_FILE).lines.map(&:strip)
 end
 
 def departures_crossed_interval(new_departures, old_departures)
   departures = []
   old_departures.each_pair do |stop_id, route_directions|
     route_directions.each_pair do |route_dir_data, trips|
-      route_id, headsign = route_dir_data.match(/\A\["(.*)", "(.*)"\]\z/).captures
+      route_id, sign = route_dir_data.match(/\A\["(.*)", "(.*)"\]\z/).captures
       trips.each_pair do |trip_id, old_interval|
         stop_departures = new_departures[stop_id]
-        route_dir_departures = stop_departures[[route_id, headsign]] if stop_departures
-        new_interval = new_departures[stop_id][[route_id, headsign]][trip_id] if route_dir_departures
+        if stop_departures
+          route_dir_departures = stop_departures[[route_id, sign]]
+        end
+        if route_dir_departures
+          new_interval = new_departures[stop_id][[route_id, sign]][trip_id]
+        end
         if new_interval && old_interval > @interval && new_interval <= @interval
-          departures << { route_id: route_id, headsign: headsign,
+          departures << { route_id: route_id, sign: sign,
                           stop_id: stop_id, interval: new_interval }
         end
       end
@@ -126,30 +128,28 @@ def new_departures
   departures
 end
 
-def play(file_data, specifiers = {})
+def play(file_data)
   dir, name = file_data.to_a.first
   file_path = "voice/#{dir}s/#{name}.wav"
   if File.file? file_path
     AudioPlayback.play(file_path).block
-  else
-    if file_data.to_a[1]
-      _, route_id = file_data.to_a[1]
-      file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
-      if File.file? file_path
-        AudioPlayback.play(file_path).block
-      else say(name)
-      end
+  elsif file_data.to_a[1]
+    _, route_id = file_data.to_a[1]
+    file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
+    if File.file? file_path
+      AudioPlayback.play(file_path).block
     else say(name)
     end
+  else say(name)
   end
 end
 
 def say(text)
   system 'say', text
   missing_messages = if File.file? MISSING_TEXT_FILE
-    File.read(MISSING_TEXT_FILE).lines.map(&:strip)
-  else []
-  end
+                       File.read(MISSING_TEXT_FILE).lines.map(&:strip)
+                     else []
+                     end
   missing_messages << text unless missing_messages.include?(text)
   File.open MISSING_TEXT_FILE, 'w' do |file|
     file.puts missing_messages.sort
@@ -160,7 +160,7 @@ options = {}
 
 OptionParser.new do |opts|
   opts.banner = 'Usage: ruby announcer.rb [options]'
-  opts.on '-t', '--test', 'Test the announcement functionality without querying the API' do
+  opts.on '-t', '--test', 'Test announcements without querying the API' do
     options[:test] = true
   end
 end.parse!
@@ -173,6 +173,6 @@ else
   define_interval
   departures = new_departures
   announcements = departures_crossed_interval(departures, cached_departures)
-  announcements.each(&method(:make_announcement)) if announcements.length > 0
+  announcements.each(&method(:make_announcement)) unless announcements.empty?
   cache_departures(departures)
 end
