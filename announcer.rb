@@ -101,7 +101,7 @@ def new_departures
 end
 
 def play(file_data)
-  dir, name = file_data.to_a.first
+  dir, name = file_data.to_a[0]
   file_path = "voice/#{dir}s/#{name}.wav"
   if File.file? file_path
     AudioPlayback.play(file_path).block
