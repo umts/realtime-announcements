@@ -62,34 +62,6 @@ def departures_crossed_interval(new_departures, old_departures)
   departures
 end
 
-def get_routes_cache
-  routes = {}
-  routes_uri = URI("#{PVTA_API_URL}/Routes/GetVisibleRoutes")
-  route_data = JSON.parse(Net::HTTP.get(routes_uri))
-  route_data.each do |route|
-    id = route.fetch('RouteId')
-    name = route.fetch('RouteAbbreviation')
-    routes[id] = name
-  end
-  File.open ROUTES_CACHE_FILE, 'w' do |file|
-    file.puts routes.to_json
-  end
-end
-
-def get_stops_cache
-  stops = {}
-  stops_uri = URI("#{PVTA_API_URL}/Stops/GetAllStops")
-  stop_data = JSON.parse(Net::HTTP.get(stops_uri))
-  stop_data.each do |stop|
-    id = stop.fetch('StopId')
-    name = stop.fetch('Description')
-    stops[id] = name
-  end
-  File.open STOPS_CACHE_FILE, 'w' do |file|
-    file.puts stops.to_json
-  end
-end
-
 def make_announcement(route_id:, headsign:, stop_id:, interval:)
   play route:    route_id
   play fragment: 'toward'
