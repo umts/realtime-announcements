@@ -1,0 +1,6 @@
+AllCops:
+  TargetRubyVersion: 2.4
+
+# It isn't a reader method. We're actually going and getting stuff.
+Style/AccessorMethodName:
+  Enabled: false
