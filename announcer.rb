@@ -122,9 +122,11 @@ def say(text)
                        File.read(MISSING_TEXT_FILE).lines.map(&:strip)
                      else []
                      end
-  missing_messages << text unless missing_messages.include?(text)
-  File.open MISSING_TEXT_FILE, 'w' do |file|
-    file.puts missing_messages.sort
+  unless missing_messages.include? text
+    missing_messages << text
+    File.open MISSING_TEXT_FILE, 'w' do |file|
+      file.puts missing_messages.sort
+    end
   end
 end
 
