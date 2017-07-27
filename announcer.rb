@@ -140,9 +140,9 @@ end.parse!
 
 if options[:test]
   make_announcement route_id: '20030', headsign: 'North Amherst',
-                    stop_id: '72', interval: '4'
+                    stop_id: '72', interval: 4
   make_announcement route_id: '20033', headsign: 'Big Y / Stop and Shop',
-                    stop_id: '71', interval: '5'
+                    stop_id: '71', interval: 5
 else
   set_query_stops
   set_interval
