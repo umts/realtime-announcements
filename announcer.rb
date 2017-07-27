@@ -28,13 +28,13 @@ def cached_departures
   end
 end
 
-def define_interval
+def set_interval
   return unless File.file? CONFIG_FILE
   config = JSON.parse File.read(CONFIG_FILE)
   @interval = config.fetch('interval') if config.key? 'interval'
 end
 
-def define_query_stops
+def set_query_stops
   return unless File.file? QUERY_STOPS_FILE
   @query_stops = File.read(QUERY_STOPS_FILE).lines.map(&:strip)
 end
@@ -122,11 +122,10 @@ def say(text)
                        File.read(MISSING_TEXT_FILE).lines.map(&:strip)
                      else []
                      end
-  unless missing_messages.include? text
-    missing_messages << text
-    File.open MISSING_TEXT_FILE, 'w' do |file|
-      file.puts missing_messages.sort
-    end
+  return if missing_messages.include? text
+  missing_messages << text
+  File.open MISSING_TEXT_FILE, 'w' do |file|
+    file.puts missing_messages.sort
   end
 end
 
@@ -143,8 +142,8 @@ if options[:test]
   make_announcement route_id: '20033', headsign: 'Big Y / Stop and Shop',
                     stop_id: '71', interval: '5'
 else
-  define_query_stops
-  define_interval
+  set_query_stops
+  set_interval
   departures = new_departures
   announcements = departures_crossed_interval(departures, cached_departures)
   announcements.each(&method(:make_announcement)) unless announcements.empty?
