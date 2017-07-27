@@ -6,10 +6,10 @@ require 'net/http'
 require 'optparse'
 
 PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
+
 CONFIG_FILE = 'config.json'
 MISSING_TEXT_FILE = 'missing_messages.log'
 QUERY_STOPS_FILE = 'stops.txt'
-
 DEPARTURES_CACHE_FILE = 'cached_departures.json'
 
 @interval = 5
