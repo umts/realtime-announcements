@@ -37,6 +37,31 @@ describe Announcer do
     end
   end
 
+  describe 'set_interval' do
+    before :each do
+      stub_const 'Announcer::CONFIG_FILE', :config_file
+      expect(File).to receive(:file?).with(:config_file)
+        .and_return file_present
+      @interval = :default_interval
+    end
+    context 'with no config file' do
+      let(:file_present) { false }
+      it 'keeps the default interval' do
+        set_interval
+        expect(@interval).to be :default_interval
+      end
+    end
+    context 'with a config file' do
+      let(:file_present) { true }
+      it 'parses as JSON and reads the interval key' do
+        expect(File).to receive(:read).with(:config_file).and_return :json
+        expect(JSON).to receive(:parse).with(:json).and_return 'interval' => 7
+        set_interval
+        expect(@interval).to be 7
+      end
+    end
+  end
+
   describe 'set_query_stops' do
     before :each do
       stub_const 'Announcer::QUERY_STOPS_FILE', :stops_file
