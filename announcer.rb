@@ -54,7 +54,7 @@ module Announcer
             new_interval = new_departures[stop_id][[route_id, sign]][trip_id]
           end
           if new_interval && old_interval > @interval && new_interval <= @interval
-            departures << { route_id: route_id, sign: sign,
+            departures << { route_id: route_id, headsign: sign,
                             stop_id: stop_id, interval: new_interval }
           end
         end
@@ -69,7 +69,12 @@ module Announcer
     play headsign: headsign, route_id: route_id
     play fragment: 'will be leaving'
     play stop:     stop_id
-    play fragment: "in #{interval} minutes" unless interval < 1
+    fragment = case interval <=> 1
+               when -1 then 'now'
+               when  0 then 'in 1 minute'
+               when  1 then "in #{interval} minutes"
+               end
+    play fragment: fragment
     sleep 0.5
   end
 
