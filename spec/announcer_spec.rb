@@ -36,4 +36,31 @@ describe Announcer do
       end
     end
   end
+
+  describe 'set_query_stops' do
+    before :each do
+      stub_const 'Announcer::QUERY_STOPS_FILE', :stops_file
+      expect(File).to receive(:file?).with(:stops_file).and_return file_present
+      @query_stops = :default_stops
+    end
+    context 'with no query stops file' do
+      let(:file_present) { false }
+      it 'keeps the default query stops' do
+        set_query_stops
+        expect(@query_stops).to be :default_stops
+      end
+    end
+    context 'with a query stops file' do
+      let(:file_present) { true }
+      let(:lines) { ['STOP_ID     '] }
+      before :each do
+        expect(File).to receive(:read).with(:stops_file)
+          .and_return double lines: lines
+      end
+      it 'reads the lines from the file to set the query stops' do
+        set_query_stops
+        expect(@query_stops).to include 'STOP_ID'
+      end
+    end
+  end
 end
