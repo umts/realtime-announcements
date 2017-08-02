@@ -3,5 +3,7 @@
 # TODO: simplecov
 
 require 'rspec'
+require 'timecop'
 require 'webmock/rspec'
+
 require_relative '../announcer'

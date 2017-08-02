@@ -8,5 +8,6 @@ gem 'whenever', '~> 0.9'
 group :developement do
   gem 'rspec'
   gem 'rubocop', '~> 0.49'
+  gem 'timecop'
   gem 'webmock'
 end

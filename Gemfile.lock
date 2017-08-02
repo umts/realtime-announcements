@@ -49,6 +49,7 @@ GEM
     ruby-audio (1.6.1)
     ruby-progressbar (1.8.1)
     safe_yaml (1.0.4)
+    timecop (0.9.1)
     unicode-display_width (1.3.0)
     webmock (3.0.1)
       addressable (>= 2.3.6)
@@ -64,6 +65,7 @@ DEPENDENCIES
   audio-playback (~> 0.0)
   rspec
   rubocop (~> 0.49)
+  timecop
   webmock
   whenever (~> 0.9)
 
