@@ -75,6 +75,57 @@ describe Announcer do
     end
   end
 
+  describe 'make_announcement' do
+    let :announce do
+      make_announcement route_id: '20030', headsign: 'North Amherst',
+                        stop_id: '72', interval: interval
+    end
+    # What we expect to be played
+    before :each do
+      expect_any_instance_of(Announcer).to receive(:play)
+        .with route: '20030'
+      expect_any_instance_of(Announcer).to receive(:play)
+        .with fragment: 'toward'
+      expect_any_instance_of(Announcer).to receive(:play)
+        .with headsign: 'North Amherst', route_id: '20030'
+      expect_any_instance_of(Announcer).to receive(:play)
+        .with fragment: 'will be leaving'
+      expect_any_instance_of(Announcer).to receive(:play)
+        .with stop: '72'
+      expect_any_instance_of(Announcer).to receive(:sleep).with 0.5
+    end
+    let(:interval) { 5 }
+    it 'plays the expected files' do
+      expect_any_instance_of(Announcer).to receive(:play)
+        .with fragment: 'in 5 minutes'
+      announce
+    end
+    context 'interval is 0 or less' do
+      let(:interval) { 0 }
+      it 'says the bus leaves now' do
+        expect_any_instance_of(Announcer).to receive(:play)
+          .with fragment: 'now'
+        announce
+      end
+    end
+    context 'interval is 1' do
+      let(:interval) { 1 }
+      it 'says the bus in 1 minute' do
+        expect_any_instance_of(Announcer).to receive(:play)
+          .with fragment: 'in 1 minute'
+        announce
+      end
+    end
+    context 'interval is 2 or more' do
+      let(:interval) { 2 }
+      it 'says the bus in # minutes' do
+        expect_any_instance_of(Announcer).to receive(:play)
+          .with fragment: 'in 2 minutes'
+        announce
+      end
+    end
+  end
+
   describe 'new_departures' do
     # I would have route_id and headsign be symbols, but we encode as JSON.
     let :endpoint_response do
