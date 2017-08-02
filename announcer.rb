@@ -95,9 +95,8 @@ module Announcer
           timestamp = departure.fetch 'EDT'
           match_data = timestamp.match %r{/Date\((\d+)000-0[45]00\)/}
           timestamp = match_data.captures.first.to_i
-          edt = Time.at(timestamp)
-          interval_seconds = edt - Time.now
-          interval = interval_seconds.floor / 60
+          interval_seconds = timestamp - Time.now.to_i
+          interval = interval_seconds / 60
           departures[stop_id][[route_id, headsign]] ||= {}
           departures[stop_id][[route_id, headsign]][trip_id] = interval
         end
