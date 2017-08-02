@@ -5,6 +5,27 @@ require 'spec_helper'
 include Announcer
 
 describe Announcer do
+  describe 'cached_departures' do
+    before :each do
+      stub_const 'Announcer::DEPARTURES_CACHE_FILE', :cache_file
+      expect(File).to receive(:file?).with(:cache_file).and_return file_present
+    end
+    context 'with a cached departures file' do
+      let(:file_present) { true }
+      it 'returns the file parsed as JSON' do
+        expect(File).to receive(:read).with(:cache_file).and_return :file_json
+        expect(JSON).to receive(:parse).with(:file_json).and_return :cache
+        expect(cached_departures).to eql :cache
+      end
+    end
+    context 'with no cached departures file' do
+      let(:file_present) { false }
+      it 'returns an empty hash' do
+        expect(cached_departures).to eql Hash.new
+      end
+    end
+  end
+
   describe 'new_departures' do
     # I would have route_id and headsign be symbols, but we encode as JSON.
     let :endpoint_response do
