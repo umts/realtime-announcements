@@ -29,25 +29,48 @@ describe Announcer do
   # I could make this more exhaustive (9 cases total), but I
   # think the ones I didn't include here are really edge cases.
   describe 'departures_crossed_interval' do
+    before :each do
+      @interval = 3
+      # Expected return value
+      @departure = {
+        route_id: 'route_id', headsign: 'sign',
+        stop_id: :stop_id, interval: new_time
+      }
+    end
+    let :new_departures do
+      { stop_id: { %w[route_id sign] => { trip_id: new_time } } }
+    end
+    # The old departures array is un-stringified in the method.
+    let :old_departures do
+      { stop_id: { %w[route_id sign].to_s => { trip_id: old_time } } }
+    end
+    subject { departures_crossed_interval new_departures, old_departures }
     context 'departure was above interval' do
+      let(:old_time) { 5 }
       context 'departure remains above interval' do
-        it 'does not return departure'
+        let(:new_time) { 4 }
+        it { is_expected.not_to include @departure }
       end
       context 'departure is at interval' do
-        it 'returns departure'
+        let(:new_time) { 3 }
       end
       context 'departure is below interval' do
-        it 'returns departure'
+        let(:new_time) { 2 }
+        it { is_expected.to include @departure }
       end
     end
     context 'departure was at interval' do
+      let(:old_time) { 3 }
       context 'departure is below interval' do
-        it 'does not return departure'
+        let(:new_time) { 2 }
+        it { is_expected.not_to include @departure }
       end
     end
     context 'departure was below interval' do
+      let(:old_time) { 2 }
       context 'departure remains below interval' do
-        it 'does not return departure'
+        let(:new_time) { 1 }
+        it { is_expected.not_to include @departure }
       end
     end
   end
