@@ -26,6 +26,32 @@ describe Announcer do
     end
   end
 
+  # I could make this more exhaustive (9 cases total), but I
+  # think the ones I didn't include here are really edge cases.
+  describe 'departures_crossed_interval' do
+    context 'departure was above interval' do
+      context 'departure remains above interval' do
+        it 'does not return departure'
+      end
+      context 'departure is at interval' do
+        it 'returns departure'
+      end
+      context 'departure is below interval' do
+        it 'returns departure'
+      end
+    end
+    context 'departure was at interval' do
+      context 'departure is below interval' do
+        it 'does not return departure'
+      end
+    end
+    context 'departure was below interval' do
+      context 'departure remains below interval' do
+        it 'does not return departure'
+      end
+    end
+  end
+
   describe 'new_departures' do
     # I would have route_id and headsign be symbols, but we encode as JSON.
     let :endpoint_response do
