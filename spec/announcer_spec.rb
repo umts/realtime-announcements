@@ -5,6 +5,19 @@ require 'spec_helper'
 include Announcer
 
 describe Announcer do
+  describe 'cache_departures' do
+    before :each do
+      stub_const 'Announcer::DEPARTURES_CACHE_FILE', :cache_file
+    end
+    it 'writes its input as JSON to the cache file' do
+      input = { key: :value }
+      file = double
+      expect(File).to receive(:open).with(:cache_file, 'w').and_yield file
+      expect(file).to receive(:puts).with input.to_json
+      cache_departures(input)
+    end
+  end
+
   describe 'cached_departures' do
     before :each do
       stub_const 'Announcer::DEPARTURES_CACHE_FILE', :cache_file
