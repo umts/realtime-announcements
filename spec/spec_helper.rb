@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
-# TODO: simplecov
+require 'simplecov'
+
+SimpleCov.start do
+  add_filter '/config/'
+  add_filter '/spec/'
+end
 
 require 'rspec'
 require 'timecop'

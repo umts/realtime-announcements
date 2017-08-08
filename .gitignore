@@ -2,3 +2,6 @@ cached_departures.json
 config.json
 missing_messages.log
 stop_ids.txt
+
+/coverage
+!/coverage/.last_run.json
