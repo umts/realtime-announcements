@@ -215,6 +215,55 @@ describe Announcer do
     end
   end
 
+  describe 'play' do
+    let(:call) { play fruit: 'banana' }
+    let(:expected_path) { 'voice/fruits/banana.wav' }
+    before :each do
+      expect(File).to receive(:file?).with(expected_path)
+        .and_return file_present
+    end
+    context 'file exists at the expected path' do
+      let(:file_present) { true }
+      it 'plays the file' do
+        expect(AudioPlayback).to receive(:play).with(expected_path)
+          .and_return double block: true
+        call
+      end
+    end
+    context 'file does not exist at the expected path' do
+      let(:file_present) { false }
+      context 'another specifier is given' do
+        let(:call) { play fruit: 'banana', color: 'yellow' }
+        let(:new_expected_path) { 'voice/fruits/yellow/banana.wav' }
+        before :each do
+          expect(File).to receive(:file?).with(new_expected_path)
+            .and_return new_file_present
+        end
+        context 'file exists in the directory matching the specifier value' do
+          let(:new_file_present) { true }
+          it 'plays the file' do
+            expect(AudioPlayback).to receive(:play).with(new_expected_path)
+              .and_return double block: true
+            call
+          end
+        end
+        context 'file does not exist in that directory' do
+          let(:new_file_present) { false }
+          it 'says the text' do
+            expect_any_instance_of(Announcer).to receive(:say).with 'banana'
+            call
+          end
+        end
+      end
+      context 'another specifier is not given' do
+        it 'says the text' do
+          expect_any_instance_of(Announcer).to receive(:say).with 'banana'
+          call
+        end
+      end
+    end
+  end
+
   describe 'run' do
     before :each do
       expect_any_instance_of(Announcer).to receive(:set_query_stops)
