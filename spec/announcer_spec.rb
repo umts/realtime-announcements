@@ -321,6 +321,47 @@ describe Announcer do
     end
   end
 
+  describe 'say' do
+    before :each do
+      stub_const 'Announcer::MISSING_TEXT_FILE', :cache_file
+      expect(File).to receive(:file?).with(:cache_file).and_return file_present
+      expect_any_instance_of(Announcer).to receive(:system)
+        .with('say', 'grapes')
+    end
+    context 'missing text file does not exist' do
+      let(:file_present) { false }
+      it 'says the message and writes it to the missing text file' do
+        file = double
+        expect(File).to receive(:open).with(:cache_file, 'w').and_yield file
+        expect(file).to receive(:puts).with %w[grapes]
+        say 'grapes'
+      end
+    end
+    context 'missing text file exists' do
+      let(:file_present) { true }
+      before :each do
+        expect(File).to receive(:read).with(:cache_file)
+          .and_return double lines: message_lines
+      end
+      context 'message already exists in missing text file' do
+        let(:message_lines) { %w[apples bananas grapes] }
+        it 'says the message but does not write it to the file' do
+          expect(File).not_to receive(:open)
+          say 'grapes'
+        end
+      end
+      context 'message does not already exist in missing text file' do
+        let(:message_lines) { %w[apples pears] }
+        it 'says the message and writes it (sorted) to the missing text file' do
+          file = double
+          expect(File).to receive(:open).with(:cache_file, 'w').and_yield file
+          expect(file).to receive(:puts).with %w[apples grapes pears]
+          say 'grapes'
+        end
+      end
+    end
+  end
+
   describe 'set_query_stops' do
     before :each do
       stub_const 'Announcer::QUERY_STOPS_FILE', :stops_file
