@@ -67,7 +67,7 @@ module Announcer
     play route:    route_id
     play fragment: 'toward'
     play headsign: headsign, route_id: route_id
-    play fragment: 'will be leaving'
+    play fragment: 'will be leaving from'
     play stop:     stop_id
     fragment = case interval <=> 1
                when -1 then 'now'
