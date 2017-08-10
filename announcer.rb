@@ -10,7 +10,7 @@ module Announcer
 
   CONFIG_FILE = 'config.json'
   MISSING_TEXT_FILE = 'missing_messages.log'
-  QUERY_STOPS_FILE = 'stop_ids.txt'
+  QUERY_STOPS_FILE = 'stops.txt'
   DEPARTURES_CACHE_FILE = 'cached_departures.json'
 
   @interval = 5
@@ -126,8 +126,8 @@ module Announcer
     set_interval
     departures = new_departures
     announcements = departures_crossed_interval(departures, cached_departures)
-    announcements.each(&method(:make_announcement)) unless announcements.empty?
     cache_departures(departures)
+    announcements.each(&method(:make_announcement)) unless announcements.empty?
   end
 
   def say(text)
