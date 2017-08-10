@@ -10,7 +10,7 @@ module Announcer
 
   CONFIG_FILE = 'config.json'
   MISSING_TEXT_FILE = 'missing_messages.log'
-  QUERY_STOPS_FILE = 'stops.txt'
+  QUERY_STOPS_FILE = 'stop_ids.txt'
   DEPARTURES_CACHE_FILE = 'cached_departures.json'
 
   @interval = 5
