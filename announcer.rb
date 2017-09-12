@@ -63,18 +63,44 @@ module Announcer
     departures
   end
 
-  def make_announcement(route_id:, headsign:, stop_id:, interval:)
+  def soonest_departures(departures)
+    departure_attrs = []
+    departures.each_pair do |stop_id, route_directions|
+      route_directions.each_pair do |(route_id, sign), trips|
+        departure_attrs << { route_id: route_id, headsign: sign,
+                             stop_id: stop_id, interval: trips.values.min }
+      end
+    end
+    departure_attrs
+  end
+
+  def make_announcement(route_id:, headsign:, stop_id:, interval:, options: {})
     play route:    route_id
     play fragment: 'toward'
     play headsign: headsign, route_id: route_id
-    play fragment: 'will be leaving from'
-    play stop:     stop_id
-    fragment = case interval <=> 1
-               when -1 then 'now'
-               when  0 then 'in 1 minute'
-               when  1 then "in #{interval} minutes"
-               end
-    play fragment: fragment
+    if options[:exclude_stop_name]
+      play fragment: 'will be leaving'
+    else
+      play fragment: 'will be leaving from'
+      play stop:     stop_id
+    end
+    if interval < 1
+      play fragment: 'now'
+    elsif interval == 1
+      play fragment: 'in 1 minute'
+    elsif interval < 60
+      play fragment: "in #{interval} minutes"
+    else
+      hour, minute = interval.divmod 60
+      if hour == 1
+        play fragment: 'in 1 hour'
+      else play fragment: "in #{hour} hours"
+      end
+      unless minute == 0
+        play fragment: 'and'
+        play fragment: "#{minute} minutes"
+      end
+    end
     sleep 0.5
   end
 
@@ -94,9 +120,9 @@ module Announcer
           trip_id = trip.fetch('TripId').to_s
           timestamp = departure.fetch 'EDT'
           match_data = timestamp.match %r{/Date\((\d+)000-0[45]00\)/}
-          timestamp = match_data.captures.first.to_i
-          interval_seconds = timestamp - Time.now.to_i
-          interval = interval_seconds / 60
+          timestamp_minutes = match_data.captures.first.to_i / 60
+          minutes_now = Time.now.to_i / 60
+          interval = timestamp_minutes - minutes_now
           departures[stop_id][[route_id, headsign]] ||= {}
           departures[stop_id][[route_id, headsign]][trip_id] = interval
         end
@@ -128,6 +154,13 @@ module Announcer
     announcements = departures_crossed_interval(departures, cached_departures)
     cache_departures(departures)
     announcements.each(&method(:make_announcement)) unless announcements.empty?
+  end
+
+  def announce_all
+    set_query_stops
+    soonest_departures(new_departures).each do |announcement|
+      make_announcement announcement.merge(options: { exclude_stop_name: true })
+    end
   end
 
   def say(text)
