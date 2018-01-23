@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'audio-playback'
 require 'json'
 require 'net/http'
 require 'optparse'
+require 'pry-byebug'
 
 module Announcer
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
@@ -12,6 +12,8 @@ module Announcer
   MISSING_TEXT_FILE = 'missing_messages.log'
   QUERY_STOPS_FILE = 'stop_ids.txt'
   DEPARTURES_CACHE_FILE = 'cached_departures.json'
+  AUDIO_COMMAND = File.read('audio_command.txt').strip
+  SPEECH_COMMAND = File.read('speech_command.txt').strip
 
   @interval = 5
   @query_stops = %w[71 72 73]
@@ -135,12 +137,12 @@ module Announcer
     dir, name = file_data.to_a[0]
     file_path = "voice/#{dir}s/#{name}.wav"
     if File.file? file_path
-      AudioPlayback.play(file_path).block
+      system AUDIO_COMMAND, file_path
     elsif file_data.to_a[1]
       _, route_id = file_data.to_a[1]
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
       if File.file? file_path
-        AudioPlayback.play(file_path).block
+        system AUDIO_COMMAND, file_path
       else say(name)
       end
     else say(name)
@@ -164,7 +166,7 @@ module Announcer
   end
 
   def say(text)
-    system 'say', text
+    system SPEECH_COMMAND, text
     missing_messages = if File.file? MISSING_TEXT_FILE
                          File.read(MISSING_TEXT_FILE).lines.map(&:strip)
                        else []

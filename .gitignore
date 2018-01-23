@@ -2,6 +2,8 @@ cached_departures.json
 config.json
 missing_messages.log
 stop_ids.txt
+audio_command.txt
+speech_command.txt
 
 /coverage
 !/coverage/.last_run.json
