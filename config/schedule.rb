@@ -12,5 +12,5 @@ end
 
 # Every day at 4am, git pull
 every :day, at: '4:00 am' do
-  command 'git pull updates master; bundle exec whenever -w'
+  command 'git pull updates master && bundle exec whenever -w'
 end
