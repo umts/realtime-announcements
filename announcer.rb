@@ -143,9 +143,9 @@ module Announcer
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
       if File.file? file_path
         system AUDIO_COMMAND, file_path
-      else say(name)
+      else say(name, route_id)
       end
-    else say(name)
+    else say(name, route_id)
     end
   end
 
@@ -165,14 +165,16 @@ module Announcer
     end
   end
 
-  def say(text)
+  def say(text, context)
     system SPEECH_COMMAND, text
     missing_messages = if File.file? MISSING_TEXT_FILE
                          File.read(MISSING_TEXT_FILE).lines.map(&:strip)
                        else []
                        end
-    return if missing_messages.include? text
-    missing_messages << text
+    log_entry = text
+    log_entry << " (#{context})" if context
+    return if missing_messages.include? log_entry
+    missing_messages << log_entry
     File.open MISSING_TEXT_FILE, 'w' do |file|
       file.puts missing_messages.sort
     end
