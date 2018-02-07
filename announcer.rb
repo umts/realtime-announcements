@@ -9,7 +9,7 @@ module Announcer
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 
   CONFIG_FILE = 'config.json'
-  MISSING_TEXT_FILE = 'missing_messages.log'
+  MISSING_TEXT_FILE = 'missing_messages.tmp'
   QUERY_STOPS_FILE = 'stop_ids.txt'
   DEPARTURES_CACHE_FILE = 'cached_departures.json'
   AUDIO_COMMAND = File.read('audio_command.txt').strip
@@ -136,16 +136,16 @@ module Announcer
   def play(file_data)
     dir, name = file_data.to_a[0]
     file_path = "voice/#{dir}s/#{name}.wav"
-    if File.file? file_path
+    if false # File.file? file_path
       system AUDIO_COMMAND, file_path
     elsif file_data.to_a[1]
       _, route_id = file_data.to_a[1]
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
-      if File.file? file_path
+      if false # File.file? file_path
         system AUDIO_COMMAND, file_path
-      else say(name, route_id)
+      else say(name, "route #{route_id}")
       end
-    else say(name, route_id)
+    else say(name, dir)
     end
   end
 
@@ -172,7 +172,7 @@ module Announcer
                        else []
                        end
     log_entry = text
-    log_entry << " (#{context})" if context
+    log_entry += " (#{context})" if context
     return if missing_messages.include? log_entry
     missing_messages << log_entry
     File.open MISSING_TEXT_FILE, 'w' do |file|
