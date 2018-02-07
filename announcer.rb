@@ -16,6 +16,7 @@ module Announcer
   AUDIO_COMMAND = File.read('audio_command.txt').strip
   SPEECH_COMMAND = File.read('speech_command.txt').strip
   GITHUB_TOKEN = File.read('github_token.txt').strip
+  REPO_NAME = 'umts/realtime-announcements'
 
   @interval = 5
   @query_stops = %w[71 72 73]
@@ -220,7 +221,7 @@ module Announcer
     missing_messages = log_entries(MISSING_TEXT_FILE).map(&method(:issue_title))
     present_messages = log_entries(PRESENT_TEXT_FILE).map(&method(:issue_title))
     client = Octokit::Client.new access_token: GITHUB_TOKEN
-    open_issues = client.list_issues 'umts/realtime-announcements', labels: 'automated'
+    open_issues = client.list_issues REPO_NAME, labels: 'automated'
     open_issues.each do |issue|
       if missing_messages.include? issue.title
         # We already know it's missing.
@@ -228,13 +229,13 @@ module Announcer
       end
       if present_messages.include? issue.title
         # It's present now! We can close the issue.
-        client.close_issue 'umts/realtime-announcements', issue.number
-        client.add_comment 'umts/realtime-announcements', issue.number, issue_body
+        client.close_issue REPO_NAME, issue.number
+        client.add_comment REPO_NAME, issue.number, issue_body
       end
     end
     # If any missing messages are left, they're new, and should be reported.
     missing_messages.each do |title|
-      client.create_issue 'umts/realtime-announcements', title, issue_body, labels: 'automated'
+      client.create_issue REPO_NAME, title, issue_body, labels: 'automated'
     end
   end
 end
