@@ -145,13 +145,13 @@ module Announcer
     dir, name = file_data.to_a[0]
     file_path = "voice/#{dir}s/#{name}.wav"
     if File.file? file_path
-      # system AUDIO_COMMAND, file_path
+      system AUDIO_COMMAND, file_path
       record_log_entry(PRESENT_TEXT_FILE, name, dir)
     elsif file_data.to_a[1]
       _, route_id = file_data.to_a[1]
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
       if File.file? file_path
-        # system AUDIO_COMMAND, file_path
+        system AUDIO_COMMAND, file_path
         record_log_entry(PRESENT_TEXT_FILE, name, "route #{route_id}")
       else say(name, "route #{route_id}")
       end
