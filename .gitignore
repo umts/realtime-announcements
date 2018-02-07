@@ -1,6 +1,7 @@
 cached_departures.json
 config.json
 missing_messages.tmp
+present_messages.tmp
 stop_ids.txt
 audio_command.txt
 speech_command.txt

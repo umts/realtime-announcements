@@ -10,6 +10,7 @@ module Announcer
 
   CONFIG_FILE = 'config.json'
   MISSING_TEXT_FILE = 'missing_messages.tmp'
+  PRESENT_TEXT_FILE = 'present_messages.tmp'
   QUERY_STOPS_FILE = 'stop_ids.txt'
   DEPARTURES_CACHE_FILE = 'cached_departures.json'
   AUDIO_COMMAND = File.read('audio_command.txt').strip
@@ -138,14 +139,30 @@ module Announcer
     file_path = "voice/#{dir}s/#{name}.wav"
     if false # File.file? file_path
       system AUDIO_COMMAND, file_path
+      record_log_entry(PRESENT_TEXT_FILE, name, dir)
     elsif file_data.to_a[1]
       _, route_id = file_data.to_a[1]
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
-      if false # File.file? file_path
+      if File.file? file_path
         system AUDIO_COMMAND, file_path
+        record_log_entry(PRESENT_TEXT_FILE, name, "route #{route_id}")
       else say(name, "route #{route_id}")
       end
     else say(name, dir)
+    end
+  end
+
+  def record_log_entry(log_file, message, context)
+    messages = if File.file? log_file
+                         File.read(log_file).lines.map(&:strip)
+                       else []
+                       end
+    log_entry = message
+    log_entry += " (#{context})" if context
+    return if messages.include? log_entry
+    messages << log_entry
+    File.open log_file, 'w' do |file|
+      file.puts messages.sort
     end
   end
 
@@ -155,7 +172,10 @@ module Announcer
     departures = new_departures
     announcements = departures_crossed_interval(departures, cached_departures)
     cache_departures(departures)
-    announcements.each(&method(:make_announcement)) unless announcements.empty?
+    unless announcements.empty?
+      announcements.each(&method(:make_announcement))
+      update_github_issues
+    end
   end
 
   def announce_all
@@ -167,16 +187,6 @@ module Announcer
 
   def say(text, context)
     system SPEECH_COMMAND, text
-    missing_messages = if File.file? MISSING_TEXT_FILE
-                         File.read(MISSING_TEXT_FILE).lines.map(&:strip)
-                       else []
-                       end
-    log_entry = text
-    log_entry += " (#{context})" if context
-    return if missing_messages.include? log_entry
-    missing_messages << log_entry
-    File.open MISSING_TEXT_FILE, 'w' do |file|
-      file.puts missing_messages.sort
-    end
+    record_log_entry(MISSING_TEXT_FILE, text, context)
   end
 end
