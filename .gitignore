@@ -4,6 +4,7 @@ missing_messages.log
 stop_ids.txt
 audio_command.txt
 speech_command.txt
+github_token.txt
 
 /coverage
 !/coverage/.last_run.json
