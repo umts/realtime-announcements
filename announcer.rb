@@ -70,7 +70,7 @@ module Announcer
   end
 
   def issue_body
-    "Reported at #{Time.now.strftime '%A, %B %-e, %Y %-l:%m %P'}."
+    "Reported on #{Time.now.strftime '%A, %B %-e, %Y at %-l:%m %P'}."
   end
 
   def issue_title(message_data)
