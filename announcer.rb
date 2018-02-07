@@ -155,7 +155,10 @@ module Announcer
     departures = new_departures
     announcements = departures_crossed_interval(departures, cached_departures)
     cache_departures(departures)
-    announcements.each(&method(:make_announcement)) unless announcements.empty?
+    unless announcements.empty?
+      play fragment: 'ding'
+      announcements.each(&method(:make_announcement))
+    end
   end
 
   def announce_all
