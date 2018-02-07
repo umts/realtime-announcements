@@ -190,7 +190,7 @@ module Announcer
   end
 
   def say(text, context)
-    # system SPEECH_COMMAND, text
+    system SPEECH_COMMAND, text
     record_log_entry(PRESENT_TEXT_FILE, text, context)
   end
 
