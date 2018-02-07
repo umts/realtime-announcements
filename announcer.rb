@@ -182,6 +182,7 @@ module Announcer
     announcements = departures_crossed_interval(departures, cached_departures)
     cache_departures(departures)
     unless announcements.empty? || announcements_in_progress?
+      play fragment: 'ding'
       announcements.each(&method(:make_announcement))
       update_github_issues!
       remove_temp_files!
