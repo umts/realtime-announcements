@@ -15,8 +15,10 @@ module Announcer
   DEPARTURES_CACHE_FILE = 'cached_departures.json'
   AUDIO_COMMAND = File.read('audio_command.txt').strip
   SPEECH_COMMAND = File.read('speech_command.txt').strip
-  GITHUB_TOKEN = File.read('github_token.txt').strip
-  REPO_NAME = 'umts/realtime-announcements'
+  if File.file? 'github_token.txt'
+    GITHUB_TOKEN = File.read('github_token.txt').strip
+    REPO_NAME = 'umts/realtime-announcements'
+  end
 
   @interval = 5
   @query_stops = %w[71 72 73]
@@ -218,6 +220,7 @@ module Announcer
   end
 
   def update_github_issues!
+    return unless File.file? 'github_token.txt'
     missing_messages = log_entries(MISSING_TEXT_FILE).map(&method(:issue_title))
     present_messages = log_entries(PRESENT_TEXT_FILE).map(&method(:issue_title))
     client = Octokit::Client.new access_token: GITHUB_TOKEN
