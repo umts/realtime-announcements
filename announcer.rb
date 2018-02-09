@@ -220,7 +220,7 @@ module Announcer
   end
 
   def update_github_issues!
-    return unless File.file? 'github_token.txt'
+    return unless defined? GITHUB_TOKEN
     missing_messages = log_entries(MISSING_TEXT_FILE).map(&method(:issue_title))
     present_messages = log_entries(PRESENT_TEXT_FILE).map(&method(:issue_title))
     client = Octokit::Client.new access_token: GITHUB_TOKEN
