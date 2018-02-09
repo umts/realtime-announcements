@@ -23,13 +23,14 @@ module Announcer
   @interval = 5
   @query_stops = %w[71 72 73]
 
+  at_exit { remove_temp_files! }
+
   def announce_all
     set_query_stops
     soonest_departures(new_departures).each do |announcement|
       make_announcement announcement.merge(options: { exclude_stop_name: true })
     end
     update_github_issues!
-    remove_temp_files!
   end
 
   def announcements_in_progress?
@@ -148,13 +149,13 @@ module Announcer
     dir, name = file_data.to_a[0]
     file_path = "voice/#{dir}s/#{name}.wav"
     if File.file? file_path
-      system AUDIO_COMMAND, file_path
+      # system AUDIO_COMMAND, file_path
       record_log_entry(PRESENT_TEXT_FILE, name, dir)
     elsif file_data.to_a[1]
       _, route_id = file_data.to_a[1]
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
       if File.file? file_path
-        system AUDIO_COMMAND, file_path
+        # system AUDIO_COMMAND, file_path
         record_log_entry(PRESENT_TEXT_FILE, name, "route #{route_id}")
       else say(name, "route #{route_id}")
       end
@@ -188,12 +189,11 @@ module Announcer
       play fragment: 'ding'
       announcements.each(&method(:make_announcement))
       update_github_issues!
-      remove_temp_files!
     end
   end
 
   def say(text, context)
-    system SPEECH_COMMAND, text
+    # system SPEECH_COMMAND, text
     record_log_entry(PRESENT_TEXT_FILE, text, context)
   end
 
