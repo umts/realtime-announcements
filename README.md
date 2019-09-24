@@ -40,7 +40,7 @@ There are four configuration files which end in `.example` within the repository
 1. Create an `audio_command.txt` file contaiing the command which the announcer should use to play .wav files. At the time of writing `play` is recommended and must be installed with `sudo apt install sox`. For instance you can run `echo play > audio_command.txt`.
 
 ### Test announcements
-1. Run `bundle exec ruby announcer.rb` to test that announcements work properly.
+1. Run `bundle exec rake announcer:announce_all` to test that announcements work properly.
 
 ### Set up scheduled jobs
 1. Run `bundle exec whenever -w` which will set the cron jobs necessary to run announcements every minute.
