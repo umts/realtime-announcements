@@ -2,21 +2,40 @@
 
 require 'json'
 require 'net/http'
-require 'optparse'
+require 'octokit'
 require 'pry-byebug'
 
 module Announcer
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 
   CONFIG_FILE = 'config.json'
-  MISSING_TEXT_FILE = 'missing_messages.log'
+  MISSING_TEXT_FILE = 'missing_messages.tmp'
+  PRESENT_TEXT_FILE = 'present_messages.tmp'
   QUERY_STOPS_FILE = 'stop_ids.txt'
   DEPARTURES_CACHE_FILE = 'cached_departures.json'
   AUDIO_COMMAND = File.read('audio_command.txt').strip
   SPEECH_COMMAND = File.read('speech_command.txt').strip
+  if File.file? 'github_token.txt'
+    GITHUB_TOKEN = File.read('github_token.txt').strip
+    REPO_NAME = 'umts/realtime-announcements'
+  end
 
   @interval = 5
   @query_stops = %w[71 72 73]
+
+  at_exit { remove_temp_files! }
+
+  def announce_all
+    set_query_stops
+    soonest_departures(new_departures).each do |announcement|
+      make_announcement announcement.merge(options: { exclude_stop_name: true })
+    end
+    update_github_issues!
+  end
+
+  def announcements_in_progress?
+    File.file?(MISSING_TEXT_FILE) || File.file?(PRESENT_TEXT_FILE)
+  end
 
   def cache_departures(departures)
     File.open DEPARTURES_CACHE_FILE, 'w' do |file|
@@ -29,17 +48,6 @@ module Announcer
       JSON.parse File.read(DEPARTURES_CACHE_FILE)
     else {}
     end
-  end
-
-  def set_interval
-    return unless File.file? CONFIG_FILE
-    config = JSON.parse File.read(CONFIG_FILE)
-    @interval = config.fetch('interval') if config.key? 'interval'
-  end
-
-  def set_query_stops
-    return unless File.file? QUERY_STOPS_FILE
-    @query_stops = File.read(QUERY_STOPS_FILE).lines.map(&:strip)
   end
 
   def departures_crossed_interval(new_departures, old_departures)
@@ -65,15 +73,19 @@ module Announcer
     departures
   end
 
-  def soonest_departures(departures)
-    departure_attrs = []
-    departures.each_pair do |stop_id, route_directions|
-      route_directions.each_pair do |(route_id, sign), trips|
-        departure_attrs << { route_id: route_id, headsign: sign,
-                             stop_id: stop_id, interval: trips.values.min }
-      end
+  def issue_body
+    "Reported on #{Time.now.strftime '%A, %B %-e, %Y at %-l:%m %P'}."
+  end
+
+  def issue_title(message_data)
+    "Missing announcement #{message_data}"
+  end
+
+  def log_entries(log_file)
+    if File.file? log_file
+      File.read(log_file).lines.map(&:strip)
+    else []
     end
-    departure_attrs
   end
 
   def make_announcement(route_id:, headsign:, stop_id:, interval:, options: {})
@@ -138,15 +150,33 @@ module Announcer
     file_path = "voice/#{dir}s/#{name}.wav"
     if File.file? file_path
       system AUDIO_COMMAND, file_path
+      record_log_entry(PRESENT_TEXT_FILE, name, dir)
     elsif file_data.to_a[1]
       _, route_id = file_data.to_a[1]
       file_path = "voice/#{dir}s/#{route_id}/#{name.tr '/', '-'}.wav"
       if File.file? file_path
         system AUDIO_COMMAND, file_path
-      else say(name, route_id)
+        record_log_entry(PRESENT_TEXT_FILE, name, "route #{route_id}")
+      else say(name, "route #{route_id}")
       end
-    else say(name, route_id)
+    else say(name, dir)
     end
+  end
+
+  def record_log_entry(log_file, message, context)
+    messages = log_entries(log_file)
+    log_entry = message
+    log_entry += " (#{context})" if context
+    return if messages.include? log_entry
+    messages << log_entry
+    File.open log_file, 'w' do |file|
+      file.puts messages.sort
+    end
+  end
+
+  def remove_temp_files!
+    FileUtils.rm MISSING_TEXT_FILE if File.file? MISSING_TEXT_FILE
+    FileUtils.rm PRESENT_TEXT_FILE if File.file? PRESENT_TEXT_FILE
   end
 
   def run
@@ -155,31 +185,60 @@ module Announcer
     departures = new_departures
     announcements = departures_crossed_interval(departures, cached_departures)
     cache_departures(departures)
-    unless announcements.empty?
+    unless announcements.empty? || announcements_in_progress?
       play fragment: 'ding'
       announcements.each(&method(:make_announcement))
-    end
-  end
-
-  def announce_all
-    set_query_stops
-    soonest_departures(new_departures).each do |announcement|
-      make_announcement announcement.merge(options: { exclude_stop_name: true })
+      update_github_issues!
     end
   end
 
   def say(text, context)
     system SPEECH_COMMAND, text
-    missing_messages = if File.file? MISSING_TEXT_FILE
-                         File.read(MISSING_TEXT_FILE).lines.map(&:strip)
-                       else []
-                       end
-    log_entry = text
-    log_entry << " (#{context})" if context
-    return if missing_messages.include? log_entry
-    missing_messages << log_entry
-    File.open MISSING_TEXT_FILE, 'w' do |file|
-      file.puts missing_messages.sort
+    record_log_entry(PRESENT_TEXT_FILE, text, context)
+  end
+
+  def set_interval
+    return unless File.file? CONFIG_FILE
+    config = JSON.parse File.read(CONFIG_FILE)
+    @interval = config.fetch('interval') if config.key? 'interval'
+  end
+
+  def set_query_stops
+    return unless File.file? QUERY_STOPS_FILE
+    @query_stops = File.read(QUERY_STOPS_FILE).lines.map(&:strip)
+  end
+
+  def soonest_departures(departures)
+    departure_attrs = []
+    departures.each_pair do |stop_id, route_directions|
+      route_directions.each_pair do |(route_id, sign), trips|
+        departure_attrs << { route_id: route_id, headsign: sign,
+                             stop_id: stop_id, interval: trips.values.min }
+      end
+    end
+    departure_attrs
+  end
+
+  def update_github_issues!
+    return unless defined? GITHUB_TOKEN
+    missing_messages = log_entries(MISSING_TEXT_FILE).map(&method(:issue_title))
+    present_messages = log_entries(PRESENT_TEXT_FILE).map(&method(:issue_title))
+    client = Octokit::Client.new access_token: GITHUB_TOKEN
+    open_issues = client.list_issues REPO_NAME, labels: 'automated'
+    open_issues.each do |issue|
+      if missing_messages.include? issue.title
+        # We already know it's missing.
+        missing_messages.delete issue.title
+      end
+      if present_messages.include? issue.title
+        # It's present now! We can close the issue.
+        client.close_issue REPO_NAME, issue.number
+        client.add_comment REPO_NAME, issue.number, issue_body
+      end
+    end
+    # If any missing messages are left, they're new, and should be reported.
+    missing_messages.each do |title|
+      client.create_issue REPO_NAME, title, issue_body, labels: 'automated'
     end
   end
 end
