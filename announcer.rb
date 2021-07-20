@@ -104,7 +104,7 @@ module Announcer
         play fragment: 'in 1 hour'
       else play fragment: "in #{hour} hours"
       end
-      unless minute == 0
+      unless minute.zero?
         play fragment: 'and'
         play fragment: "#{minute} minutes"
       end
@@ -180,11 +180,11 @@ module Announcer
     departures = new_departures
     announcements = departures_crossed_interval(departures, cached_departures)
     cache_departures(departures)
-    unless announcements.empty? || announcements_in_progress?
-      play fragment: 'ding'
-      announcements.each(&method(:make_announcement))
-      update_github_issues!
-    end
+    return if announcements.empty? || announcements_in_progress?
+
+    play fragment: 'ding'
+    announcements.each(&method(:make_announcement))
+    update_github_issues!
   end
 
   def say(text, context)
