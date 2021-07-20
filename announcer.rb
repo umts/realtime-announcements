@@ -23,8 +23,6 @@ module Announcer
   @interval = 5
   @query_stops = %w[71 72 73]
 
-  at_exit { remove_temp_files! }
-
   def announce_all
     set_query_stops
     soonest_departures(new_departures).each do |announcement|
