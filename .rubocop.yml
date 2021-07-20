@@ -1,12 +1,8 @@
 AllCops:
-  TargetRubyVersion: 2.4
+  NewCops: enable
 
 Metrics/AbcSize:
   Max: 35
 
 Metrics/MethodLength:
   Max: 25
-
-# It isn't a reader method. We're actually going and getting stuff.
-Style/AccessorMethodName:
-  Enabled: false
