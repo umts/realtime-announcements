@@ -192,7 +192,7 @@ module Announcer
 
   def say(text, context)
     system SPEECH_COMMAND, text
-    record_log_entry(PRESENT_TEXT_FILE, text, context)
+    record_log_entry(MISSING_TEXT_FILE, text, context)
   end
 
   def set_interval
