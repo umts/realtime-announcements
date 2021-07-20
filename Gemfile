@@ -9,6 +9,7 @@ group :developement do
   gem 'pry-byebug'
   gem 'rspec'
   gem 'rubocop'
+  gem 'rubocop-rspec'
   gem 'simplecov'
   gem 'timecop'
   gem 'webmock'
