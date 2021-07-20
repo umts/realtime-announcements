@@ -22,7 +22,7 @@ RSpec.describe Announcer do
       allow(file).to receive(:puts)
     end
 
-    let(:input) { {key: :value} }
+    let(:input) { { key: :value } }
     let(:file) { double }
 
     it 'opens the cache file' do
@@ -288,8 +288,9 @@ RSpec.describe Announcer do
           {
             'RouteId' => 'route_id',
             'Departures' => [
-                { 'EDT' => "/Date(#{time.to_i}000-0400)/",
-                  'Trip' => {
+              {
+                'EDT' => "/Date(#{time.to_i}000-0400)/",
+                'Trip' => {
                   'InternetServiceDesc' => 'headsign',
                   'TripId' => 'trip_id'
                 } # trip
@@ -300,7 +301,7 @@ RSpec.describe Announcer do
       ] # response array
     end
 
-    before do 
+    before do
       stub_const 'Announcer::PVTA_API_URL', 'http://example.com'
       announcer.instance_variable_set(:@query_stops, ['stop_id'])
       stub_request(:get, 'http://example.com/stopdepartures/get/stop_id')
@@ -389,7 +390,7 @@ RSpec.describe Announcer do
         before do
           allow(File).to receive(:file?).and_call_original
           allow(File).to receive(:file?).with(new_expected_path)
-            .and_return new_file_present
+                                        .and_return(new_file_present)
         end
 
         context 'when a file exists in the directory matching the specifier value' do
@@ -424,7 +425,7 @@ RSpec.describe Announcer do
   describe 'run' do
     subject(:call) { announcer.run }
 
-    let(:departures_to_announce){ [] }
+    let(:departures_to_announce) { [] }
 
     before do
       %i[set_query_stops set_interval cache_departures play make_announcement
@@ -515,7 +516,7 @@ RSpec.describe Announcer do
       let(:file_present) { false }
 
       it 'keeps the default interval' do
-        expect { call }.not_to change { current_interval }
+        expect { call }.not_to(change { current_interval })
       end
     end
 
@@ -574,7 +575,7 @@ RSpec.describe Announcer do
       let(:file_present) { false }
 
       it 'keeps the default query stops' do
-        expect { call }.not_to change { current_stops }
+        expect { call }.not_to(change { current_stops })
       end
     end
 
