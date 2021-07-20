@@ -1,40 +1,73 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require_relative '../announcer'
 
-include Announcer
+RSpec.describe Announcer do
+  subject(:announcer) { Class.new { extend Announcer } }
 
-describe Announcer do
+  let!(:default_missing_file) { Announcer::MISSING_TEXT_FILE }
+  let!(:default_present_file) { Announcer::PRESENT_TEXT_FILE }
+
+  after do
+    FileUtils.rm default_missing_file if File.file? default_missing_file
+    FileUtils.rm default_present_file if File.file? default_present_file
+  end
+
   describe 'cache_departures' do
-    before :each do
+    subject(:call) { announcer.cache_departures(input) }
+
+    before do
       stub_const 'Announcer::DEPARTURES_CACHE_FILE', :cache_file
+      allow(File).to receive(:open).with(:cache_file, 'w').and_yield file
+      allow(file).to receive(:puts)
     end
+
+    let(:input) { {key: :value} }
+    let(:file) { double }
+
+    it 'opens the cache file' do
+      call
+      expect(File).to have_received(:open).with(:cache_file, 'w')
+    end
+
     it 'writes its input as JSON to the cache file' do
-      input = { key: :value }
-      file = double
-      expect(File).to receive(:open).with(:cache_file, 'w').and_yield file
-      expect(file).to receive(:puts).with input.to_json
-      cache_departures(input)
+      call
+      expect(file).to have_received(:puts).with input.to_json
     end
   end
 
   describe 'cached_departures' do
-    before :each do
+    subject(:call) { announcer.cached_departures }
+
+    before do
       stub_const 'Announcer::DEPARTURES_CACHE_FILE', :cache_file
-      expect(File).to receive(:file?).with(:cache_file).and_return file_present
+      allow(File).to receive(:file?).and_call_original
+      allow(File).to receive(:file?).with(:cache_file).and_return file_present
     end
+
     context 'with a cached departures file' do
+      before do
+        allow(File).to receive(:read).with(:cache_file).and_return :file_json
+        allow(JSON).to receive(:parse).with(:file_json).and_return :cache
+      end
+
       let(:file_present) { true }
+
+      it 'reads the cached departures file' do
+        call
+        expect(File).to have_received(:read).with(:cache_file)
+      end
+
       it 'returns the file parsed as JSON' do
-        expect(File).to receive(:read).with(:cache_file).and_return :file_json
-        expect(JSON).to receive(:parse).with(:file_json).and_return :cache
-        expect(cached_departures).to eql :cache
+        expect(call).to eql :cache
       end
     end
+
     context 'with no cached departures file' do
       let(:file_present) { false }
+
       it 'returns an empty hash' do
-        expect(cached_departures).to eql Hash.new
+        expect(call).to eq({})
       end
     end
   end
@@ -42,13 +75,14 @@ describe Announcer do
   # I could make this more exhaustive (9 cases total), but I
   # think the ones I didn't include here are really edge cases.
   describe 'departures_crossed_interval' do
-    before :each do
-      @interval = 3
-      # Expected return value
-      @departure = {
-        route_id: 'route_id', headsign: 'sign',
-        stop_id: :stop_id, interval: new_time
-      }
+    subject :call do
+      announcer.departures_crossed_interval(new_departures, old_departures)
+    end
+
+    before { announcer.instance_variable_set(:@interval, 3) }
+
+    let :departure do
+      { route_id: 'route_id', headsign: 'sign', stop_id: :stop_id, interval: new_time }
     end
     let :new_departures do
       { stop_id: { %w[route_id sign] => { trip_id: new_time } } }
@@ -57,89 +91,196 @@ describe Announcer do
     let :old_departures do
       { stop_id: { %w[route_id sign].to_s => { trip_id: old_time } } }
     end
-    subject { departures_crossed_interval new_departures, old_departures }
-    context 'departure was above interval' do
+
+    context 'when the departure was above interval' do
       let(:old_time) { 5 }
-      context 'departure remains above interval' do
+
+      context 'when the departure remains above interval' do
         let(:new_time) { 4 }
-        it { is_expected.not_to include @departure }
+
+        it { is_expected.not_to include departure }
       end
-      context 'departure is at interval' do
+
+      context 'when the departure is at interval' do
         let(:new_time) { 3 }
       end
-      context 'departure is below interval' do
+
+      context 'when the departure is below interval' do
         let(:new_time) { 2 }
-        it { is_expected.to include @departure }
+
+        it { is_expected.to include departure }
       end
     end
-    context 'departure was at interval' do
+
+    context 'when a departure was at interval' do
       let(:old_time) { 3 }
-      context 'departure is below interval' do
+
+      context 'when the departure is below interval' do
         let(:new_time) { 2 }
-        it { is_expected.not_to include @departure }
+
+        it { is_expected.not_to include departure }
       end
     end
-    context 'departure was below interval' do
+
+    context 'when a departure was below interval' do
       let(:old_time) { 2 }
-      context 'departure remains below interval' do
+
+      context 'when the departure remains below interval' do
         let(:new_time) { 1 }
-        it { is_expected.not_to include @departure }
+
+        it { is_expected.not_to include departure }
       end
     end
   end
 
   describe 'make_announcement' do
-    let :announce do
-      make_announcement route_id: '20030', headsign: 'North Amherst',
-                        stop_id: '72', interval: interval
+    subject(:call) { announcer.make_announcement(args) }
+
+    before do
+      allow(announcer).to receive(:play)
+      allow(announcer).to receive(:sleep)
     end
-    # What we expect to be played
-    before :each do
-      expect_any_instance_of(Announcer).to receive(:play)
-        .with route: '20030'
-      expect_any_instance_of(Announcer).to receive(:play)
-        .with fragment: 'toward'
-      expect_any_instance_of(Announcer).to receive(:play)
-        .with headsign: 'North Amherst', route_id: '20030'
-      expect_any_instance_of(Announcer).to receive(:play)
-        .with fragment: 'will be leaving'
-      expect_any_instance_of(Announcer).to receive(:play)
-        .with stop: '72'
-      expect_any_instance_of(Announcer).to receive(:sleep).with 0.5
+
+    let :base_args do
+      { route_id: '20030', headsign: 'North Amherst', stop_id: '72', interval: 5 }
     end
-    let(:interval) { 5 }
-    it 'plays the expected files' do
-      expect_any_instance_of(Announcer).to receive(:play)
-        .with fragment: 'in 5 minutes'
-      announce
+    let(:args) { base_args }
+
+    it 'plays the route fragment' do
+      call
+      expect(announcer).to have_received(:play).with(route: '20030')
     end
-    context 'interval is 0 or less' do
-      let(:interval) { 0 }
-      it 'says the bus leaves now' do
-        expect_any_instance_of(Announcer).to receive(:play)
-          .with fragment: 'now'
-        announce
+
+    it 'plays "toward"' do
+      call
+      expect(announcer).to have_received(:play).with(fragment: 'toward')
+    end
+
+    it 'plays the headsign fragment' do
+      call
+      expect(announcer).to have_received(:play)
+        .with(headsign: 'North Amherst', route_id: '20030')
+    end
+
+    context 'when including the stop name' do
+      it 'plays "will be leaving from"' do
+        call
+        expect(announcer).to have_received(:play)
+          .with(fragment: 'will be leaving from')
+      end
+
+      it 'plays the stop fragment' do
+        call
+        expect(announcer).to have_received(:play).with(stop: '72')
       end
     end
-    context 'interval is 1' do
-      let(:interval) { 1 }
-      it 'says the bus in 1 minute' do
-        expect_any_instance_of(Announcer).to receive(:play)
-          .with fragment: 'in 1 minute'
-        announce
+
+    context 'when not including the stop name' do
+      let(:args) { base_args.merge(options: { exclude_stop_name: true }) }
+
+      it 'plays "will be leaving"' do
+        call
+        expect(announcer).to have_received(:play)
+          .with(fragment: 'will be leaving')
+      end
+
+      it 'does not play the stop fragment' do
+        call
+        expect(announcer).not_to have_received(:play).with(stop: '72')
       end
     end
-    context 'interval is 2 or more' do
-      let(:interval) { 2 }
-      it 'says the bus in # minutes' do
-        expect_any_instance_of(Announcer).to receive(:play)
-          .with fragment: 'in 2 minutes'
-        announce
+
+    context 'when the interval is less than one' do
+      let(:args) { base_args.merge(interval: 0) }
+
+      it 'plays the "now" fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'now')
       end
+    end
+
+    context 'when the interval is 1 minute' do
+      let(:args) { base_args.merge(interval: 1) }
+
+      it 'plays the minute fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'in 1 minute')
+      end
+    end
+
+    context 'when interval is more than 1 minute, less than 60' do
+      it 'plays the minutes fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'in 5 minutes')
+      end
+    end
+
+    context 'when interval is exactly 1 hour' do
+      let(:args) { base_args.merge(interval: 60) }
+
+      it 'plays the hour fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'in 1 hour')
+      end
+    end
+
+    context 'when interval is between 1 and 2 hours' do
+      let(:args) { base_args.merge(interval: 65) }
+
+      it 'plays the hour fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'in 1 hour')
+      end
+
+      it 'plays the "and"' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'and')
+      end
+
+      it 'plays the minute fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: '5 minutes')
+      end
+    end
+
+    context 'when interval is exactly 2 hours' do
+      let(:args) { base_args.merge(interval: 120) }
+
+      it 'plays the hour fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'in 2 hours')
+      end
+    end
+
+    context 'when interval is more than 2 hous' do
+      let(:args) { base_args.merge(interval: 127) }
+
+      it 'plays the hour fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'in 2 hours')
+      end
+
+      it 'plays the "and"' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'and')
+      end
+
+      it 'plays the minute fragment' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: '7 minutes')
+      end
+    end
+
+    it 'pauses' do
+      call
+      expect(announcer).to have_received(:sleep).with(0.5)
     end
   end
 
   describe 'new_departures' do
+    subject(:call) { announcer.new_departures }
+
+    let(:time) { Time.now }
     # I would have route_id and headsign be symbols, but we encode as JSON.
     let :endpoint_response do
       [
@@ -147,7 +288,7 @@ describe Announcer do
           {
             'RouteId' => 'route_id',
             'Departures' => [
-                { 'EDT' => edt,
+                { 'EDT' => "/Date(#{time.to_i}000-0400)/",
                   'Trip' => {
                   'InternetServiceDesc' => 'headsign',
                   'TripId' => 'trip_id'
@@ -158,50 +299,51 @@ describe Announcer do
         ] # route directions
       ] # response array
     end
-    let(:edt) { "/Date(#{time.to_i}000-0400)/" }
-    before :each do 
-      # Freeze so that time comparison works correctly.
-      # Otherwise, we set Time.now in the test, and then compare to
-      # Time.now in the code possibly during the next second.
-      Timecop.freeze
-      @query_stops = ['stop_id']
+
+    before do 
       stub_const 'Announcer::PVTA_API_URL', 'http://example.com'
+      announcer.instance_variable_set(:@query_stops, ['stop_id'])
       stub_request(:get, 'http://example.com/stopdepartures/get/stop_id')
         .to_return body: endpoint_response.to_json
     end
-    after(:each) { Timecop.return }
+
+    around do |example|
+      Timecop.freeze { example.run }
+    end
+
+    it { is_expected.to be_a Hash }
+
+    it 'has an entry for the stop id' do
+      expect(call.keys).to contain_exactly('stop_id')
+    end
+
+    it 'has an entry that is a Hash' do
+      expect(call['stop_id']).to be_a Hash
+    end
+
+    it 'has an entry that has a route id/headsign pair' do
+      expect(call['stop_id'].keys).to contain_exactly(%w[route_id headsign])
+    end
+
+    it 'has an entry that has a route id/headsign pair that is a Hash' do
+      expect(call['stop_id'][['route_id', 'headsign']]).to be_a Hash
+    end
+
+    it 'has an entry that has a route id/headsign pair that has a departure' do
+      expect(call['stop_id'][['route_id', 'headsign']].keys)
+        .to contain_exactly('trip_id')
+    end
+
     context 'EDT is right now' do
-      let(:time) { Time.now }
+
       it 'returns the correct data structure with the interval at 0' do
-        result = new_departures
-        # Break it down into clearer atomic tests, so that if something's wrong
-        # it's easier to debug precisely what it is.
-        expect(result).to be_a Hash
-        expect(result.keys).to eql @query_stops
-
-        expect(result['stop_id']).to be_a Hash
-        expect(result['stop_id'].keys).to eql [%w(route_id headsign)]
-
-        expect(result['stop_id'][['route_id', 'headsign']]).to be_a Hash
-        expect(result['stop_id'][['route_id', 'headsign']].keys)
-          .to eql ['trip_id']
-
-        expect(result['stop_id'][['route_id', 'headsign']]['trip_id'])
-          .to be 0
-
-        # Wrapping it all up
-        expected_result = {
-          'stop_id' => {
-            ['route_id', 'headsign'] => {
-              'trip_id' => 0
-            }
-          }
-        }
-        expect(result).to eql expected_result
+        expect(call['stop_id'][['route_id', 'headsign']]['trip_id']).to be 0
       end
     end
+
     context 'EDT is in 5 minutes' do
       let(:time) { Time.now + 5 * 60 }
+
       it 'returns the correct data structure with the interval at 5' do
         expected_result = {
           'stop_id' => {
@@ -210,181 +352,243 @@ describe Announcer do
             }
           }
         }
-        expect(new_departures).to eql expected_result
+        expect(call).to eq expected_result
       end
     end
   end
 
   describe 'play' do
-    let(:call) { play fruit: 'banana' }
+    subject(:call) { announcer.play fruit: 'banana' }
+
     let(:expected_path) { 'voice/fruits/banana.wav' }
-    before :each do
-      expect(File).to receive(:file?).with(expected_path)
-        .and_return file_present
+
+    before do
+      allow(announcer).to receive(:system)
+      allow(announcer).to receive(:say)
+      allow(File).to receive(:file?).and_call_original
+      allow(File).to receive(:file?).with(expected_path).and_return(file_present)
     end
-    context 'file exists at the expected path' do
+
+    context 'when the file exists at the expected path' do
       let(:file_present) { true }
+
       it 'plays the file' do
-        expect(AudioPlayback).to receive(:play).with(expected_path)
-          .and_return double block: true
         call
+        expect(announcer).to have_received(:system)
+          .with(Announcer::AUDIO_COMMAND, expected_path)
       end
     end
+
     context 'file does not exist at the expected path' do
       let(:file_present) { false }
-      context 'another specifier is given' do
-        let(:call) { play fruit: 'banana', color: 'yellow' }
+
+      context 'when another specifier is given' do
+        let(:call) { announcer.play fruit: 'banana', color: 'yellow' }
         let(:new_expected_path) { 'voice/fruits/yellow/banana.wav' }
-        before :each do
-          expect(File).to receive(:file?).with(new_expected_path)
+
+        before do
+          allow(File).to receive(:file?).and_call_original
+          allow(File).to receive(:file?).with(new_expected_path)
             .and_return new_file_present
         end
-        context 'file exists in the directory matching the specifier value' do
+
+        context 'when a file exists in the directory matching the specifier value' do
           let(:new_file_present) { true }
+
           it 'plays the file' do
-            expect(AudioPlayback).to receive(:play).with(new_expected_path)
-              .and_return double block: true
             call
+            expect(announcer).to have_received(:system)
+              .with(Announcer::AUDIO_COMMAND, new_expected_path)
           end
         end
-        context 'file does not exist in that directory' do
+
+        context 'when a file does not exist in that directory' do
           let(:new_file_present) { false }
+
           it 'says the text' do
-            expect_any_instance_of(Announcer).to receive(:say).with 'banana'
             call
+            expect(announcer).to have_received(:say).with('banana', any_args)
           end
         end
       end
-      context 'another specifier is not given' do
+
+      context 'when another specifier is not given' do
         it 'says the text' do
-          expect_any_instance_of(Announcer).to receive(:say).with 'banana'
           call
+          expect(announcer).to have_received(:say).with('banana', any_args)
         end
       end
     end
   end
 
   describe 'run' do
-    before :each do
-      expect_any_instance_of(Announcer).to receive(:set_query_stops)
-      expect_any_instance_of(Announcer).to receive(:set_interval)
-      expect_any_instance_of(Announcer).to receive(:new_departures)
-        .and_return :departures
-      expect_any_instance_of(Announcer).to receive(:cached_departures)
-        .and_return :cached_departures
-      expect_any_instance_of(Announcer)
-        .to receive(:departures_crossed_interval)
-        .with(:departures, :cached_departures)
-        .and_return departures_to_announce
-      expect_any_instance_of(Announcer).to receive(:cache_departures)
-        .with :departures
+    subject(:call) { announcer.run }
+
+    let(:departures_to_announce){ [] }
+
+    before do
+      %i[set_query_stops set_interval cache_departures play make_announcement
+         update_github_issues!].each do |method|
+        allow(announcer).to receive(method)
+      end
+      allow(announcer).to receive(:new_departures).and_return(:some_departures)
+      allow(announcer).to receive(:cached_departures).and_return(:some_cached_departures)
+      allow(announcer).to receive(:departures_crossed_interval)
+        .and_return(departures_to_announce)
     end
-    context 'with departures to announce' do
-      let(:departures_to_announce) { [:departure_to_announce] }
-      it 'makes announcements' do
-        expect_any_instance_of(Announcer).to receive(:make_announcement)
-          .with(:departure_to_announce)
-        run
+
+    it 'sets the query stops' do
+      call
+      expect(announcer).to have_received(:set_query_stops)
+    end
+
+    it 'sets the interval' do
+      call
+      expect(announcer).to have_received(:set_interval)
+    end
+
+    it 'finds new departures' do
+      call
+      expect(announcer).to have_received(:new_departures)
+    end
+
+    it 'checks which departures to announce' do
+      call
+      expect(announcer).to have_received(:departures_crossed_interval)
+        .with(:some_departures, :some_cached_departures)
+    end
+
+    it 'caches departures' do
+      call
+      expect(announcer).to have_received(:cache_departures).with(:some_departures)
+    end
+
+    context 'with no departures to announce' do
+      it 'makes no announcements' do
+        call
+        expect(announcer).not_to have_received(:make_announcement)
       end
     end
-    context 'with no departures to announce' do
-      let(:departures_to_announce){ [] }
-      it 'makes no announcements' do
-        expect_any_instance_of(Announcer).not_to receive(:make_announcement)
-        run
+
+    context 'with departures to announce' do
+      let(:departures_to_announce) do
+        [{
+          route_id: 'someroute',
+          headsign: 'somesign',
+          stop_id: 'somestop',
+          interval: 123
+        }]
+      end
+
+      it 'dings' do
+        call
+        expect(announcer).to have_received(:play).with(fragment: 'ding')
+      end
+
+      it 'makes announcements' do
+        call
+        expect(announcer).to have_received(:make_announcement)
+          .with(departures_to_announce[0])
+      end
+
+      it 'updates GitHub' do
+        call
+        expect(announcer).to have_received(:update_github_issues!)
       end
     end
   end
 
   describe 'set_interval' do
-    before :each do
-      stub_const 'Announcer::CONFIG_FILE', :config_file
-      expect(File).to receive(:file?).with(:config_file)
-        .and_return file_present
-      @interval = :default_interval
+    subject(:call) { announcer.set_interval }
+
+    def current_interval
+      announcer.instance_variable_get(:@interval)
     end
+
+    before do
+      stub_const 'Announcer::CONFIG_FILE', :config_file
+      allow(File).to receive(:file?).and_call_original
+      allow(File).to receive(:file?).with(:config_file).and_return(file_present)
+    end
+
     context 'with no config file' do
       let(:file_present) { false }
+
       it 'keeps the default interval' do
-        set_interval
-        expect(@interval).to be :default_interval
+        expect { call }.not_to change { current_interval }
       end
     end
+
     context 'with a config file' do
       let(:file_present) { true }
+
+      before do
+        allow(File).to receive(:read).with(:config_file).and_return(:json)
+        allow(JSON).to receive(:parse).with(:json).and_return('interval' => 7)
+      end
+
       it 'parses as JSON and reads the interval key' do
-        expect(File).to receive(:read).with(:config_file).and_return :json
-        expect(JSON).to receive(:parse).with(:json).and_return 'interval' => 7
-        set_interval
-        expect(@interval).to be 7
+        call
+        expect(current_interval).to be 7
       end
     end
   end
 
   describe 'say' do
-    before :each do
+    subject(:call) { announcer.say 'the text', :context }
+
+    before do
+      stub_const 'Announcer::SPEECH_COMMAND', :speech_command
       stub_const 'Announcer::MISSING_TEXT_FILE', :cache_file
-      expect(File).to receive(:file?).with(:cache_file).and_return file_present
-      expect_any_instance_of(Announcer).to receive(:system)
-        .with('say', 'grapes')
+      allow(announcer).to receive(:system)
+      allow(announcer).to receive(:record_log_entry)
     end
-    context 'missing text file does not exist' do
-      let(:file_present) { false }
-      it 'says the message and writes it to the missing text file' do
-        file = double
-        expect(File).to receive(:open).with(:cache_file, 'w').and_yield file
-        expect(file).to receive(:puts).with %w[grapes]
-        say 'grapes'
-      end
+
+    it 'calls out to the speach command' do
+      call
+      expect(announcer).to have_received(:system)
+        .with(:speech_command, 'the text')
     end
-    context 'missing text file exists' do
-      let(:file_present) { true }
-      before :each do
-        expect(File).to receive(:read).with(:cache_file)
-          .and_return double lines: message_lines
-      end
-      context 'message already exists in missing text file' do
-        let(:message_lines) { %w[apples bananas grapes] }
-        it 'says the message but does not write it to the file' do
-          expect(File).not_to receive(:open)
-          say 'grapes'
-        end
-      end
-      context 'message does not already exist in missing text file' do
-        let(:message_lines) { %w[apples pears] }
-        it 'says the message and writes it (sorted) to the missing text file' do
-          file = double
-          expect(File).to receive(:open).with(:cache_file, 'w').and_yield file
-          expect(file).to receive(:puts).with %w[apples grapes pears]
-          say 'grapes'
-        end
-      end
+
+    it 'records the missing announcement' do
+      call
+      expect(announcer).to have_received(:record_log_entry)
+        .with(:cache_file, 'the text', :context)
     end
   end
 
   describe 'set_query_stops' do
-    before :each do
-      stub_const 'Announcer::QUERY_STOPS_FILE', :stops_file
-      expect(File).to receive(:file?).with(:stops_file).and_return file_present
-      @query_stops = :default_stops
+    subject(:call) { announcer.set_query_stops }
+
+    def current_stops
+      announcer.instance_variable_get(:@query_stops)
     end
+
+    before do
+      stub_const 'Announcer::QUERY_STOPS_FILE', :stops_file
+      allow(File).to receive(:file?).and_call_original
+      allow(File).to receive(:file?).with(:stops_file).and_return(file_present)
+    end
+
     context 'with no query stops file' do
       let(:file_present) { false }
+
       it 'keeps the default query stops' do
-        set_query_stops
-        expect(@query_stops).to be :default_stops
+        expect { call }.not_to change { current_stops }
       end
     end
+
     context 'with a query stops file' do
       let(:file_present) { true }
-      let(:lines) { ['STOP_ID     '] }
-      before :each do
-        expect(File).to receive(:read).with(:stops_file)
-          .and_return double lines: lines
+      let(:contents) { StringIO.new("STOP_ID     \n") }
+
+      before do
+        allow(File).to receive(:read).with(:stops_file).and_return(contents)
       end
+
       it 'reads the lines from the file to set the query stops' do
-        set_query_stops
-        expect(@query_stops).to include 'STOP_ID'
+        call
+        expect(current_stops).to contain_exactly('STOP_ID')
       end
     end
   end
