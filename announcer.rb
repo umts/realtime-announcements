@@ -23,8 +23,6 @@ module Announcer
   @interval = 5
   @query_stops = %w[71 72 73]
 
-  at_exit { remove_temp_files! }
-
   def announce_all
     set_query_stops
     soonest_departures(new_departures).each do |announcement|
@@ -194,7 +192,7 @@ module Announcer
 
   def say(text, context)
     system SPEECH_COMMAND, text
-    record_log_entry(PRESENT_TEXT_FILE, text, context)
+    record_log_entry(MISSING_TEXT_FILE, text, context)
   end
 
   def set_interval
