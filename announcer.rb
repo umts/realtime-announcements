@@ -55,12 +55,8 @@ module Announcer
         route_id, sign = route_dir_data.match(/\A\["(.*)", "(.*)"\]\z/).captures
         trips.each_pair do |trip_id, old_interval|
           stop_departures = new_departures[stop_id]
-          if stop_departures
-            route_dir_departures = stop_departures[[route_id, sign]]
-          end
-          if route_dir_departures
-            new_interval = new_departures[stop_id][[route_id, sign]][trip_id]
-          end
+          route_dir_departures = stop_departures[[route_id, sign]] if stop_departures
+          new_interval = new_departures[stop_id][[route_id, sign]][trip_id] if route_dir_departures
           if new_interval && old_interval > @interval && new_interval <= @interval
             departures << { route_id: route_id, headsign: sign,
                             stop_id: stop_id, interval: new_interval }
@@ -108,7 +104,7 @@ module Announcer
         play fragment: 'in 1 hour'
       else play fragment: "in #{hour} hours"
       end
-      unless minute == 0
+      unless minute.zero?
         play fragment: 'and'
         play fragment: "#{minute} minutes"
       end
@@ -166,6 +162,7 @@ module Announcer
     log_entry = message
     log_entry += " (#{context})" if context
     return if messages.include? log_entry
+
     messages << log_entry
     File.open log_file, 'w' do |file|
       file.puts messages.sort
@@ -183,11 +180,11 @@ module Announcer
     departures = new_departures
     announcements = departures_crossed_interval(departures, cached_departures)
     cache_departures(departures)
-    unless announcements.empty? || announcements_in_progress?
-      play fragment: 'ding'
-      announcements.each(&method(:make_announcement))
-      update_github_issues!
-    end
+    return if announcements.empty? || announcements_in_progress?
+
+    play fragment: 'ding'
+    announcements.each(&method(:make_announcement))
+    update_github_issues!
   end
 
   def say(text, context)
@@ -197,12 +194,14 @@ module Announcer
 
   def set_interval
     return unless File.file? CONFIG_FILE
+
     config = JSON.parse File.read(CONFIG_FILE)
     @interval = config.fetch('interval') if config.key? 'interval'
   end
 
   def set_query_stops
     return unless File.file? QUERY_STOPS_FILE
+
     @query_stops = File.read(QUERY_STOPS_FILE).lines.map(&:strip)
   end
 
@@ -219,6 +218,7 @@ module Announcer
 
   def update_github_issues!
     return unless defined? GITHUB_TOKEN
+
     missing_messages = log_entries(MISSING_TEXT_FILE).map(&method(:issue_title))
     present_messages = log_entries(PRESENT_TEXT_FILE).map(&method(:issue_title))
     client = Octokit::Client.new access_token: GITHUB_TOKEN
@@ -228,11 +228,11 @@ module Announcer
         # We already know it's missing.
         missing_messages.delete issue.title
       end
-      if present_messages.include? issue.title
-        # It's present now! We can close the issue.
-        client.close_issue REPO_NAME, issue.number
-        client.add_comment REPO_NAME, issue.number, issue_body
-      end
+      next unless present_messages.include? issue.title
+
+      # It's present now! We can close the issue.
+      client.close_issue REPO_NAME, issue.number
+      client.add_comment REPO_NAME, issue.number, issue_body
     end
     # If any missing messages are left, they're new, and should be reported.
     missing_messages.each do |title|

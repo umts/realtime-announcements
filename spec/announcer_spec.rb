@@ -327,18 +327,17 @@ RSpec.describe Announcer do
     end
 
     it 'has an entry that has a route id/headsign pair that is a Hash' do
-      expect(call['stop_id'][['route_id', 'headsign']]).to be_a Hash
+      expect(call['stop_id'][%w[route_id headsign]]).to be_a Hash
     end
 
     it 'has an entry that has a route id/headsign pair that has a departure' do
-      expect(call['stop_id'][['route_id', 'headsign']].keys)
+      expect(call['stop_id'][%w[route_id headsign]].keys)
         .to contain_exactly('trip_id')
     end
 
     context 'EDT is right now' do
-
       it 'returns the correct data structure with the interval at 0' do
-        expect(call['stop_id'][['route_id', 'headsign']]['trip_id']).to be 0
+        expect(call['stop_id'][%w[route_id headsign]]['trip_id']).to be 0
       end
     end
 
@@ -348,7 +347,7 @@ RSpec.describe Announcer do
       it 'returns the correct data structure with the interval at 5' do
         expected_result = {
           'stop_id' => {
-            ['route_id', 'headsign'] => {
+            %w[route_id headsign] => {
               'trip_id' => 5
             }
           }

@@ -1,12 +1,25 @@
 AllCops:
-  TargetRubyVersion: 2.4
+  NewCops: enable
 
 Metrics/AbcSize:
   Max: 35
 
+Metrics/BlockLength:
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+  IgnoredMethods:
+    # Gemfile
+    - group
+    # Rake
+    - namespace
+    - task
+    # RSpec
+    - before
+    - context
+    - describe
+    - it
+
 Metrics/MethodLength:
   Max: 25
-
-# It isn't a reader method. We're actually going and getting stuff.
-Style/AccessorMethodName:
-  Enabled: false
