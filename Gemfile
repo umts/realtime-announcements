@@ -7,8 +7,11 @@ gem 'whenever'
 
 group :developement do
   gem 'pry-byebug'
-  gem 'rspec'
   gem 'rubocop'
+end
+
+group :test do
+  gem 'rspec'
   gem 'simplecov'
   gem 'timecop'
   gem 'webmock'
