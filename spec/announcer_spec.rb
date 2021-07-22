@@ -59,7 +59,7 @@ RSpec.describe Announcer do
       end
 
       it 'returns the file parsed as JSON' do
-        expect(call).to eql :cache
+        expect(call).to be :cache
       end
     end
 
@@ -103,6 +103,8 @@ RSpec.describe Announcer do
 
       context 'when the departure is at interval' do
         let(:new_time) { 3 }
+
+        it { is_expected.to include departure }
       end
 
       context 'when the departure is below interval' do
@@ -301,6 +303,10 @@ RSpec.describe Announcer do
       ] # response array
     end
 
+    let :result do
+      { 'stop_id' => { %w[route_id headsign] => { 'trip_id' => 5 } } }
+    end
+
     before do
       stub_const 'Announcer::PVTA_API_URL', 'http://example.com'
       announcer.instance_variable_set(:@query_stops, ['stop_id'])
@@ -335,24 +341,17 @@ RSpec.describe Announcer do
         .to contain_exactly('trip_id')
     end
 
-    context 'EDT is right now' do
+    context 'when the EDT is right now' do
       it 'returns the correct data structure with the interval at 0' do
         expect(call['stop_id'][%w[route_id headsign]]['trip_id']).to be 0
       end
     end
 
-    context 'EDT is in 5 minutes' do
+    context 'when the EDT is in 5 minutes' do
       let(:time) { Time.now + 5 * 60 }
 
       it 'returns the correct data structure with the interval at 5' do
-        expected_result = {
-          'stop_id' => {
-            %w[route_id headsign] => {
-              'trip_id' => 5
-            }
-          }
-        }
-        expect(call).to eq expected_result
+        expect(call).to eq result
       end
     end
   end
@@ -379,7 +378,7 @@ RSpec.describe Announcer do
       end
     end
 
-    context 'file does not exist at the expected path' do
+    context 'when a file does not exist at the expected path' do
       let(:file_present) { false }
 
       context 'when another specifier is given' do

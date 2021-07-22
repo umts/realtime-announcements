@@ -8,6 +8,7 @@ gem 'whenever'
 group :developement do
   gem 'pry-byebug'
   gem 'rubocop'
+  gem 'rubocop-rspec'
 end
 
 group :test do
